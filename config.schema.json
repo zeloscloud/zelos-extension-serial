@@ -1,0 +1,81 @@
+{
+  "type": "object",
+  "title": "Serial",
+  "description": "Record serial consoles: every line becomes a log event, every printed value a signal.",
+  "ui:options": { "autoconfig": "Serial/auto_config" },
+  "properties": {
+    "ports": {
+      "type": "array", "title": "Ports", "minItems": 1, "default": [],
+      "description": "One entry for each device. Auto-configure adds a port for each USB serial device not already listed.",
+      "items": {
+        "type": "object", "title": "Port",
+        "properties": {
+          "connection": { "type": "string", "title": "Connection", "enum": ["serial", "tcp", "rfc2217", "demo"], "ui:enumNames": ["Serial port", "TCP", "RFC 2217", "Demo board"], "default": "serial" },
+          "name": { "type": "string", "title": "Name", "description": "How this port appears in the trace. Letters, digits, spaces, _ and -. Empty uses the Port field, or host:port for a network port, made safe: /dev/ttyUSB0 becomes dev_ttyUSB0.", "pattern": "^[A-Za-z0-9 _-]*$", "maxLength": 64 }
+        },
+        "required": ["connection"],
+        "dependencies": {
+          "connection": {
+            "oneOf": [
+              { "properties": {
+                  "connection": { "enum": ["serial"] },
+                  "port": { "type": "string", "title": "Port", "minLength": 1, "description": "A device from the list, or a path such as COM7 or /dev/ttyUSB0.", "ui:widget": "action-choices", "ui:options": { "action": "Serial/list_ports" } },
+                  "baud": { "type": "integer", "title": "Baud", "default": 115200, "minimum": 50, "maximum": 20000000 },
+                  "advanced": { "type": "object", "title": "Advanced", "ui:options": { "collapsed": true }, "properties": {
+                    "data_bits": { "type": "integer", "title": "Data bits", "enum": [5, 6, 7, 8], "default": 8 },
+                    "parity": { "type": "string", "title": "Parity", "enum": ["none", "even", "odd", "mark", "space"], "default": "none" },
+                    "stop_bits": { "type": "string", "title": "Stop bits", "enum": ["1", "1.5", "2"], "default": "1" },
+                    "flow_control": { "type": "string", "title": "Flow control", "enum": ["none", "rts/cts", "xon/xoff"], "default": "none" },
+                    "dtr": { "type": "string", "title": "DTR at open", "description": "Some boards reset when this line changes; see Board reset in the README.", "enum": ["on", "off"], "default": "on" },
+                    "rts": { "type": "string", "title": "RTS at open", "description": "Some boards reset when this line changes; see Board reset in the README.", "enum": ["on", "off"], "default": "on" },
+                    "reset_line": { "type": "string", "title": "Reset line", "description": "The line Reset Device pulses. ESP32 auto-reset boards: rts, with DTR at open and RTS at open both off. Arduino boards: dtr, with both on.", "enum": ["none", "dtr", "rts"], "default": "none" },
+                    "line_ending": { "type": "string", "title": "Line ending", "description": "Added after text sent by Send and Run Command.", "enum": ["LF", "CRLF", "CR"], "default": "LF" },
+                    "prompt": { "type": "string", "title": "Prompt", "description": "A regular expression for the whole prompt line. Empty uses common shell prompts." },
+                    "values": { "type": "boolean", "title": "Turn printed values into signals", "default": true, "ui:widget": "toggle" } } } },
+                "required": ["port"] },
+              { "properties": {
+                  "connection": { "enum": ["tcp"] },
+                  "host": { "type": "string", "title": "Host", "minLength": 1 },
+                  "tcp_port": { "type": "integer", "title": "TCP port", "minimum": 1, "maximum": 65535 },
+                  "advanced": { "type": "object", "title": "Advanced", "ui:options": { "collapsed": true }, "properties": {
+                    "line_ending": { "type": "string", "title": "Line ending", "description": "Added after text sent by Send and Run Command.", "enum": ["LF", "CRLF", "CR"], "default": "LF" },
+                    "prompt": { "type": "string", "title": "Prompt", "description": "A regular expression for the whole prompt line. Empty uses common shell prompts." },
+                    "values": { "type": "boolean", "title": "Turn printed values into signals", "default": true, "ui:widget": "toggle" } } } },
+                "required": ["host", "tcp_port"] },
+              { "properties": {
+                  "connection": { "enum": ["rfc2217"] },
+                  "host": { "type": "string", "title": "Host", "minLength": 1 },
+                  "tcp_port": { "type": "integer", "title": "TCP port", "minimum": 1, "maximum": 65535 },
+                  "baud": { "type": "integer", "title": "Baud", "default": 115200, "minimum": 50, "maximum": 20000000 },
+                  "advanced": { "type": "object", "title": "Advanced", "ui:options": { "collapsed": true }, "properties": {
+                    "data_bits": { "type": "integer", "title": "Data bits", "enum": [5, 6, 7, 8], "default": 8 },
+                    "parity": { "type": "string", "title": "Parity", "enum": ["none", "even", "odd", "mark", "space"], "default": "none" },
+                    "stop_bits": { "type": "string", "title": "Stop bits", "enum": ["1", "1.5", "2"], "default": "1" },
+                    "flow_control": { "type": "string", "title": "Flow control", "enum": ["none", "rts/cts", "xon/xoff"], "default": "none" },
+                    "line_ending": { "type": "string", "title": "Line ending", "description": "Added after text sent by Send and Run Command.", "enum": ["LF", "CRLF", "CR"], "default": "LF" },
+                    "prompt": { "type": "string", "title": "Prompt", "description": "A regular expression for the whole prompt line. Empty uses common shell prompts." },
+                    "values": { "type": "boolean", "title": "Turn printed values into signals", "default": true, "ui:widget": "toggle" } } } },
+                "required": ["host", "tcp_port"] },
+              { "properties": { "connection": { "enum": ["demo"] } } }
+            ]
+          }
+        },
+        "ui:order": ["connection", "port", "host", "tcp_port", "baud", "name", "*"]
+      }
+    },
+    "advanced": {
+      "type": "object", "title": "Advanced (all ports)", "ui:options": { "collapsed": true }, "additionalProperties": false, "default": {},
+      "properties": {
+        "prefix": { "type": "string", "title": "Prefix", "default": "Serial", "pattern": "^[A-Za-z0-9 _-]+$", "description": "The trace source every port publishes under." },
+        "time_source": { "type": "string", "title": "Time source", "enum": ["auto", "host"], "default": "auto", "description": "Auto uses the device clock when a line carries one." },
+        "log_level": { "type": "string", "title": "Log level", "enum": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO" }
+      }
+    }
+  },
+  "required": ["ports"],
+  "examples": [
+    { "ports": [{ "connection": "serial", "port": "usb:0403:6001:A50285BI", "baud": 115200, "name": "dut" }] },
+    { "ports": [{ "connection": "tcp", "host": "127.0.0.1", "tcp_port": 4001, "name": "dut" }, { "connection": "tcp", "host": "127.0.0.1", "tcp_port": 4002, "name": "linux" }] },
+    { "ports": [{ "connection": "demo" }] }
+  ]
+}

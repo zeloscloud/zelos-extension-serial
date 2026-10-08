@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  # Other branches run through their pull request, so a pushed branch runs once. Tags run through
+  # the Release workflow, which calls this one.
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Not github.workflow: in a called workflow that is the caller's name, so the group would
+  # match the caller's own and the run would wait on itself.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      # One failing OS must not hide the result of the others.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.11"]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - uses: extractions/setup-just@v4
+
+      # A stale lock ships in the marketplace package and fails at install on other platforms.
+      - name: Verify uv.lock is in sync with pyproject.toml
+        run: uv lock --locked
+
+      - name: Install dependencies
+        run: just ci-install
+
+      - name: Format, lint, types, tests
+        run: just check

@@ -1,0 +1,108 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Every OS, and every ser2net version, must be green before anything is packaged.
+  ci:
+    name: CI
+    uses: ./.github/workflows/CI.yml
+
+  rfc2217:
+    name: RFC 2217
+    uses: ./.github/workflows/rfc2217.yml
+
+  release:
+    name: Release
+    needs: [ci, rfc2217]
+    runs-on: ubuntu-latest
+    # The one job that writes: it creates the GitHub release.
+    permissions:
+      contents: write
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - uses: extractions/setup-just@v4
+
+      - name: Get version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      # Plain `python`, not `uv run python`: reading two TOML files must not sync the project first.
+      - name: Verify version matches manifest files
+        run: |
+          TAG_VERSION="${{ steps.version.outputs.VERSION }}"
+
+          EXTENSION_VERSION=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('extension.toml').read_text())['version'])")
+          if [ "$EXTENSION_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: extension.toml version ($EXTENSION_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "✓ extension.toml version matches: $EXTENSION_VERSION"
+
+          PYPROJECT_VERSION=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
+          if [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: pyproject.toml version ($PYPROJECT_VERSION) does not match tag ($TAG_VERSION)"
+            exit 1
+          fi
+          echo "✓ pyproject.toml version matches: $PYPROJECT_VERSION"
+
+      - name: Install Zelos CLI
+        run: |
+          curl -fsSL https://release.zeloscloud.io/cli/install.sh | bash
+          echo "$HOME/.zelos/bin" >> "$GITHUB_PATH"
+        env:
+          INSTALLER_NO_MODIFY_PATH: 1
+
+      - name: Install dependencies
+        run: just ci-install
+
+      - name: Package extension
+        run: just package
+
+      # `zelos extensions package` names the archive after the manifest name slug: serial-<version>.tar.gz.
+      - name: Verify package was created
+        run: |
+          if ! ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz 1> /dev/null 2>&1; then
+            echo "Error: Package file not found: *-${{ steps.version.outputs.VERSION }}.tar.gz"
+            exit 1
+          fi
+          echo "✓ Package created: $(ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz)"
+
+      # The packager only warns when the action dump fails, and then ships an empty or stale
+      # actions.json. Without list_ports and auto_config in it, the Port list and Auto-configure
+      # do nothing while the extension is stopped, and nothing else in the pipeline notices.
+      - name: Verify standalone action inventory shipped
+        run: |
+          ARCHIVE=$(ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz)
+          if ! tar -xzOf "$ARCHIVE" actions.json | jq -e '[.actions[].path] as $p
+              | ("list_ports" | IN($p[])) and ("auto_config" | IN($p[]))' > /dev/null; then
+            echo "Error: actions.json in $ARCHIVE does not list list_ports and auto_config"
+            exit 1
+          fi
+          echo "✓ actions.json in $ARCHIVE lists list_ports and auto_config"
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          files: "*-${{ steps.version.outputs.VERSION }}.tar.gz"
+          generate_release_notes: true
+          fail_on_unmatched_files: true

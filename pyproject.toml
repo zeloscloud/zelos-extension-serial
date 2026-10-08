@@ -1,0 +1,63 @@
+[project]
+name = "zelos-extension-serial"
+version = "0.1.0"
+description = "Record serial consoles: every line becomes a log event, every printed value a signal. Serial ports, TCP and RFC 2217."
+authors = [{ name = "Zeloscloud", email = "info@zeloscloud.io" }]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+keywords = ["zelos", "extension", "serial", "uart"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+dependencies = [
+    "zelos-sdk>=0.0.12,<0.1",
+    # rfc2217.py overrides private methods, which is only safe on a pinned minor.
+    "serialx>=1.11,<1.12",
+    "jsonschema>=4",
+]
+
+[project.urls]
+Homepage = "https://github.com/zeloscloud/zelos-extension-serial"
+Repository = "https://github.com/zeloscloud/zelos-extension-serial"
+Issues = "https://github.com/zeloscloud/zelos-extension-serial/issues"
+Documentation = "https://docs.zeloscloud.io/latest/sdk/how-to/develop-extensions/"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4.2",
+    "hypothesis>=6",
+    "ruff>=0.14.2",
+    "pyright>=1.1.400",
+    "pyarrow>=14",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["zelos_extension_serial"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--log-cli-level=INFO -m 'not perf'"
+markers = ["perf: throughput with zero loss; run with -m perf"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "C4", "PTH"]
+
+[tool.pyright]
+include = ["main.py", "zelos_extension_serial", "tests"]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"
