@@ -50,3 +50,8 @@ jobs:
 
       - name: Format, lint, types, tests
         run: just check
+
+      # Linux only: the measurements need a pseudo-terminal and a quiet runner to mean anything.
+      - name: Throughput with zero loss
+        if: runner.os == 'Linux'
+        run: uv run pytest -m perf
