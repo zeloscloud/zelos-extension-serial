@@ -1,0 +1,37 @@
+name = "Serial"
+version = "0.1.0"
+description = "Record serial consoles: every line becomes a log event, every printed value a signal. Serial ports, TCP and RFC 2217."
+author = "Zelos"
+repository = "https://github.com/zeloscloud/zelos-extension-serial"
+homepage = "https://github.com/zeloscloud/zelos-extension-serial"
+keywords = ["serial", "uart", "console", "rs232", "tcp", "rfc2217", "zephyr", "esp32", "arduino", "log"]
+categories = ["Embedded", "Industrial", "IoT", "Test & Measurement"]
+
+icon = "assets/icon.svg"
+readme = "README.md"
+
+# The Port picker (the action-choices widget) needs 26.0.8; older apps cannot render this config
+# form. Collapsed groups and Auto-configure also first ship in 26.0.8.
+[zelos]
+version = ">=26.0.8"
+
+[config]
+schema = "config.schema.json"
+
+[host]
+type = "agent"
+
+[host.agent]
+entry = "main.py"
+python_version = "3.11"
+
+# Linux and macOS: SIGTERM, then SIGKILL after this many seconds. Workers stop within 100 ms and
+# the app waits at most 1 s for them before it flushes; the rest is headroom for the SDK's atexit
+# drain. Windows: the agent terminates the job after at most 1 s, so no shutdown code runs there.
+[host.agent.stop]
+grace_seconds = 5
+
+# The packager adds extension.toml, the readme, icon and config schema, pyproject.toml, uv.lock and
+# the generated actions.json; everything else is named here.
+[package]
+paths = ["main.py", "zelos_extension_serial", "LICENSE"]
