@@ -1,0 +1,33 @@
+# zephyr log_output.c log_output_dropped_process(); lines from zephyrproject-rtos/zephyr issues
+# #52709, #75429, #113825, #91067, #49584 and #40306
+--- 1 messages dropped --- ⇒ {"rule": "zephyr-dropped", "level": "warn", "name": "", "module": null, "device_ns": null, "message": "--- 1 messages dropped ---", "prefixed": false, "values": []}
+--- 2 messages dropped --- ⇒ {"rule": "zephyr-dropped", "level": "warn"}
+--- 3 messages dropped --- ⇒ {"rule": "zephyr-dropped", "level": "warn"}
+--- 26 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 6 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 11 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 13 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 14 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 19 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 24 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 25 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 36 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 47 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 79 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 101 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 160 messages dropped --- ⇒ {"rule": "zephyr-dropped"}
+--- 9999 messages dropped --- ⇒ {"rule": "zephyr-dropped", "level": "warn", "values": []}
+
+# a terminal's host stamp and a modem mux prefix in front of the notice
+[2026-06-05 12:33:38] --- 1 messages dropped --- ⇒ {"rule": "plain", "level": "info", "prefixed": false}
+00:45.30 [CMUX] --- 36 messages dropped --- ⇒ {"rule": "plain"}
+# constructed messages dropped: >99 ⇒ {"rule": "plain"}
+# constructed --- 1 message dropped --- ⇒ {"rule": "plain"}
+# constructed ---  12 messages dropped --- ⇒ {"rule": "plain"}
+# constructed --- -1 messages dropped --- ⇒ {"rule": "plain"}
+# constructed --- 12 messages dropped ⇒ {"rule": "plain"}
+# constructed -- 12 messages dropped --- ⇒ {"rule": "plain"}
+# constructed --- twelve messages dropped --- ⇒ {"rule": "plain"}
+# constructed --- 0x0C messages dropped --- ⇒ {"rule": "plain"}
+# constructed [00:00:00.000,000] <wrn> log: --- 12 messages dropped --- ⇒ {"rule": "zephyr", "level": "warn", "module": "log"}
+# constructed --- 12 messages dropped --- extra ⇒ {"rule": "plain"}

@@ -1,0 +1,65 @@
+seq=42 ⇒ {"rule": "plain+kv", "values": [["seq", 42, null]]}
+[00:00:00.020,000] <inf> dcdc: rail=13.65V in=4.50A limit=4.5A temp=35.0C ⇒ {"rule": "zephyr+kv", "values": [["rail", 13.65, "V"], ["in", 4.5, "A"], ["limit", 4.5, "A"], ["temp", 35.0, "C"]]}
+I (146929) deep_sleep: Enabling timer wakeup, timeout=1000000us ⇒ {"rule": "esp-idf+kv", "values": [["timeout", 1000000, "us"]]}
+I (599) wifi: wifi driver task: 3ffc08b4, prio:23, stack:3584, core=0 ⇒ {"rule": "esp-idf+kv", "values": [["core", 0, null]]}
+[    0.008178] Calibrating delay loop (skipped), value calculated using timer frequency.. 15.60 BogoMIPS (lpj=31200) ⇒ {"rule": "linux+kv", "values": [["lpj", 31200, null]]}
+[    0.130245] workingset: timestamp_bits=62 max_order=11 bucket_order=0 ⇒ {"rule": "linux+kv", "values": [["timestamp_bits", 62, null], ["max_order", 11, null], ["bucket_order", 0, null]]}
+[  3071][I][esp32-hal-i2c-ng.c:112] i2cInit(): Initializing I2C Master: num=0 sda=5 scl=6 freq=100000 ⇒ {"rule": "arduino-esp32+kv", "values": [["num", 0, null], ["sda", 5, null], ["scl", 6, null], ["freq", 100000, null]]}
+[  2631][I][esp32-hal-i2c-slave.c:272] i2cSlaveInit(): Initializing I2C Slave: sda=5 scl=6 freq=100000, addr=0x33 ⇒ {"rule": "arduino-esp32+kv", "values": [["sda", 5, null], ["scl", 6, null], ["freq", 100000, null]]}
+# logfmt, brandur.org/logfmt
+# constructed at=info status=200 duration=0.5ms ⇒ {"rule": "plain+kv", "values": [["status", 200, null], ["duration", 0.5, "ms"]]}
+# constructed v=3.3V;i=0.5A ⇒ {"rule": "plain+kv", "values": [["v", 3.3, "V"], ["i", 0.5, "A"]]}
+# constructed [x=1] (y=-2.5e-3) ⇒ {"rule": "plain+kv", "values": [["x", 1, null], ["y", -0.0025, null]]}
+# constructed motor.rpm=1200,motor.temp=41.5°C ⇒ {"rule": "plain+kv", "values": [["motor.rpm", 1200, null], ["motor.temp", 41.5, "°C"]]}
+# constructed _raw=1023 pct=50% ⇒ {"rule": "plain+kv", "values": [["_raw", 1023, null], ["pct", 50, "%"]]}
+# constructed bad=1e999 good=2 ⇒ {"rule": "plain+kv", "values": [["good", 2, null]]}
+# constructed field=5V/m ⇒ {"rule": "plain+kv", "values": [["field", 5, "V/m"]]}
+# constructed temp=.5 ⇒ {"rule": "plain+kv", "values": [["temp", 0.5, null]]}
+# constructed WARN vbat=3.1V ⇒ {"rule": "level-word+kv", "level": "warn", "values": [["vbat", 3.1, "V"]]}
+# constructed offset=+0.25 temp=-40C ⇒ {"rule": "plain+kv", "values": [["offset", 0.25, null], ["temp", -40, "C"]]}
+# constructed n=0 x=0.5 y=00.5 ⇒ {"rule": "plain+kv", "values": [["n", 0, null], ["x", 0.5, null], ["y", 0.5, null]]}
+# constructed accel=9.81m/s2 rate=2.5k/s g=9.8m/s² ⇒ {"rule": "plain+kv", "values": [["accel", 9.81, "m/s2"], ["rate", 2.5, "k/s"], ["g", 9.8, "m/s²"]]}
+# constructed rssi=-40dBm i=10mA t=25degC dt=125us ⇒ {"rule": "plain+kv", "values": [["rssi", -40, "dBm"], ["i", 10, "mA"], ["t", 25, "degC"], ["dt", 125, "us"]]}
+# constructed x=1e3 y=2 uptime=12h ⇒ {"rule": "plain+kv", "values": [["x", 1000, null], ["y", 2, null], ["uptime", 12, "h"]]}
+# constructed state=bad t=5 ⇒ {"rule": "plain+kv", "values": [["t", 5, null]]}
+# hex with no letter and no leading zero reads as decimal when nothing else on the line is hex
+# constructed vaddr=40080000 ⇒ {"rule": "plain+kv", "values": [["vaddr", 40080000, null]]}
+# a zero-padded number of up to three digits is decimal
+# constructed rc=01 temp=25.3C ⇒ {"rule": "plain+kv", "values": [["rc", 1, null], ["temp", 25.3, "C"]]}
+# constructed month=09 day=05 temp=21.5 ⇒ {"rule": "plain+kv", "values": [["month", 9, null], ["day", 5, null], ["temp", 21.5, null]]}
+# constructed status=00 rail=13.6V ⇒ {"rule": "plain+kv", "values": [["status", 0, null], ["rail", 13.6, "V"]]}
+# constructed id=007 ⇒ {"rule": "plain+kv", "values": [["id", 7, null]]}
+# a unit may be made of hex letters
+# constructed gain=5dB i=2A t=25C ⇒ {"rule": "plain+kv", "values": [["gain", 5, "dB"], ["i", 2, "A"], ["t", 25, "C"]]}
+
+http://host/?a=1&b=2 ⇒ {"rule": "plain", "values": []}
+flags=0xFF ⇒ {"rule": "plain", "values": []}
+retry 3 times ⇒ {"rule": "plain", "values": []}
+speed 10 rpm ⇒ {"rule": "plain", "values": []}
+[    0.000000] SBI implementation ID=0x1 Version=0x10002 ⇒ {"rule": "linux", "values": []}
+E (124) esp_core_dump_flash: Core dump flash config is corrupted! CRC=0x7bd5c66f instead of 0x0 ⇒ {"rule": "esp-idf", "values": []}
+[    0.232253] 38000000.serial: ttySIF0 at MMIO 0x38000000 (irq = 1, base_baud = 115200) is a SiFive UART v0 ⇒ {"rule": "linux", "values": []}
+[    0.000000] Kernel command line: console=ttyS2,115200n8 root=/dev/mmcblk1p2 rw rootfstype=ext4 rootwait ⇒ {"rule": "linux", "values": []}
+# constructed ip=192.168.1.1 ⇒ {"rule": "plain", "values": []}
+# constructed ver=1.2.3 ⇒ {"rule": "plain", "values": []}
+# constructed size=3x4 ⇒ {"rule": "plain", "values": []}
+# constructed a=1b=2 ⇒ {"rule": "plain", "values": []}
+# constructed x==5 ⇒ {"rule": "plain", "values": []}
+# constructed 1=2 ⇒ {"rule": "plain", "values": []}
+# constructed time=12:30 ⇒ {"rule": "plain", "values": []}
+# constructed a=nan b=inf ⇒ {"rule": "plain", "values": []}
+# constructed x = 5 ⇒ {"rule": "plain", "values": []}
+# constructed name=value ⇒ {"rule": "plain", "values": []}
+# constructed t=5abcdefghi ⇒ {"rule": "plain", "values": []}
+# hex printed without 0x: addresses, sizes, hashes, flags
+# constructed paddr=00010020 vaddr=3f400020 size=0a3ech ⇒ {"rule": "plain", "values": []}
+# constructed git=4b6e9136c build=2f8a9c1 hash=1a2b3c4d ⇒ {"rule": "plain", "values": []}
+# constructed crc=7bd5c66f flags=0b1010 mode=0o17 ⇒ {"rule": "plain", "values": []}
+# four or more digits led by a zero are hex: drivers/usb/core/hub.c prints these with %04x
+[    2.345678] usb 1-1: New USB device found, idVendor=0403, idProduct=6001, bcdDevice= 6.00 ⇒ {"rule": "linux", "values": []}
+# constructed n=0001 m=2 ⇒ {"rule": "plain", "values": []}
+# constructed n=0000001 ⇒ {"rule": "plain", "values": []}
+# constructed paddr=00000001 n=3 ⇒ {"rule": "plain", "values": []}
+# constructed x=1f y=2 ⇒ {"rule": "plain", "values": []}
+# constructed crc=7BD5C66F n=1 ⇒ {"rule": "plain", "values": []}
+# constructed t=5V2 ⇒ {"rule": "plain", "values": []}
