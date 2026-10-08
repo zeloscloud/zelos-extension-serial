@@ -148,7 +148,9 @@ class PortWorker(threading.Thread):
         self._open_log = _Throttle()
         self._error_log = _Throttle()
         self._presence_logged = False
-        self._first = False
+        # Whether the next line may be the rest of one only partly seen: the first after an open,
+        # or the one after a partial line.
+        self._mid_line = False
         # Whether a byte arrived since the port opened.
         self._heard = False
         self._rx_ns = self._checked_ns = 0
@@ -307,7 +309,7 @@ class PortWorker(threading.Thread):
         if self._lost:
             self._counters["reconnects"] += 1
         self._lost = False
-        self._first, self._heard = True, False
+        self._mid_line, self._heard = True, False
         self._rx_ns = self._checked_ns = self._now()
         verb = "acquired" if self._acquiring is not None else "connected to"
         self._note("info", f"{verb} {self._where}")
@@ -383,10 +385,10 @@ class PortWorker(threading.Thread):
                 self._on_prompt(whole=True)
                 line = dataclasses.replace(line, text=log)
         parsed = parse(line.text, line.colour, self._shape, self._repeat)
-        first, self._first = self._first, False
+        mid_line, self._mid_line = self._mid_line, line.partial
         # Values only from whole lines: a pause or a cut can split `rail=13.64V` into `rail=13.6`,
-        # and an unprefixed first line is probably the tail of one printed before the open.
-        partial = line.partial or line.cut or (first and not parsed.prefixed)
+        # and an unprefixed line after the open or a pause is probably the rest of one.
+        partial = line.partial or line.cut or (mid_line and not parsed.prefixed)
         if parsed.values and (partial or not self._cfg.values):
             parsed = dataclasses.replace(parsed, values=())
         command = self._command

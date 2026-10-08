@@ -405,6 +405,40 @@ def test_a_line_split_by_a_pause_logs_its_first_half_without_values(rigs) -> Non
     assert rig.emitter.lines()[1].values == ()
 
 
+def paused(rigs, head: bytes, tail: bytes) -> list[Parsed]:
+    """The lines logged after the banner when `head`, a 100 ms pause and then `tail` arrive."""
+    port = Port([BANNER, head])
+    rig = rigs(port)
+    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + head))
+    rig.clock.ns += 100 * MS
+    rig.settle()
+    port.chunks.append(tail)
+    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + head + tail))
+    rig.settle()
+    return rig.emitter.lines()[1:]
+
+
+def test_the_rest_of_a_line_split_by_a_pause_is_logged_without_values(rigs) -> None:
+    lines = paused(rigs, b"[00:00:02.000,000] <inf> dcdc: rail=13.64V in=4.50A", b" limit=2.0A\r\n")
+    assert [(p.message, p.values) for p in lines] == [
+        ("dcdc: rail=13.64V in=4.50A", ()),
+        (" limit=2.0A", ()),
+    ]
+
+
+def test_a_line_after_a_paused_prompt_keeps_its_values(rigs) -> None:
+    lines = paused(rigs, b"esp32> ", b"temp=35.8C\r\n")
+    assert [(p.message, [v.name for v in p.values]) for p in lines] == [("temp=35.8C", ["temp"])]
+
+
+def test_a_log_line_after_a_split_line_keeps_its_values(rigs) -> None:
+    lines = paused(rigs, b"booting", zephyr(0.02))
+    assert [(p.message, [v.name for v in p.values]) for p in lines] == [
+        ("booting", []),
+        ("dcdc: rail=13.65V", ["rail"]),
+    ]
+
+
 def test_cut_pieces_record_no_values(rigs) -> None:
     rig = rigs(Port([BANNER, b"a=1 " * 1100 + b"\r\n"]))
     wait_until(lambda: len(rig.emitter.lines()) == 3)

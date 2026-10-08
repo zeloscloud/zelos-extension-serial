@@ -47,6 +47,7 @@ A line with no level of its own is logged as `error` when the device printed it 
 A line with no line end yet is released as a partial line after 100 ms without bytes, when a shell redraws its prompt (a cursor-left, maybe a cursor-up for a wrapped command, then an erase, as Zephyr's shell does), and when the port closes: on a disconnect, on Release Port and on stop.
 So the last line a device printed before it crashed is logged.
 A partial line is logged but gives no values: a pause can split `rail=13.64V` into `rail=13.6`.
+Nor does the next line when it has no log prefix: it is most likely the rest of the split line.
 
 A line longer than 4096 bytes is cut into pieces of at most 4096 bytes, never inside a UTF-8 character.
 Each piece is logged with the line's colour; no piece gives values or counts as a prompt or an echo.
