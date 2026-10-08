@@ -13,7 +13,7 @@ import pytest
 import serialx
 import zelos_sdk
 
-from zelos_extension_serial import ACTION_PREFIX
+from zelos_extension_serial import ACTION_PREFIX, actions
 from zelos_extension_serial.config import PortConfig
 from zelos_extension_serial.transport import Transport
 
@@ -140,6 +140,11 @@ def listing(monkeypatch: pytest.MonkeyPatch) -> list[serialx.SerialPortInfo]:
     found: list[serialx.SerialPortInfo] = []
     monkeypatch.setattr(serialx, "list_serial_ports", lambda: list(found))
     return found
+
+
+def run(name: str, **params: Any) -> Any:
+    """What the action returns when the agent runs it with these parameters."""
+    return getattr(actions, name)._action.execute(**params).value
 
 
 def wait_until(condition: Callable[[], object], timeout: float = 5.0) -> None:
