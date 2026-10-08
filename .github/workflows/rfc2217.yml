@@ -1,0 +1,109 @@
+name: RFC 2217
+
+on:
+  # As in CI.yml: other branches run through their pull request, tags through the Release workflow.
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # Not github.workflow: called from Release, that is "Release", and the group would match the
+  # caller's own.
+  group: rfc2217-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ser2net:
+    name: ser2net ${{ matrix.ser2net }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { ser2net: "4.3.4", image: "ubuntu:22.04" }
+          - { ser2net: "4.6.0", image: "ubuntu:24.04" }
+          # No distribution ships it; built the way serialx's own CI builds it.
+          - { ser2net: "4.6.7", image: "ubuntu:24.04" }
+    container:
+      image: ${{ matrix.image }}
+      # Lets root open the device ser2net holds exclusively, to read the baud it set.
+      options: --cap-add SYS_ADMIN
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBIAN_FRONTEND: noninteractive
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Install ser2net ${{ matrix.ser2net }}
+        run: |
+          set -euxo pipefail
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates procps python3 socat
+          if [ "${{ matrix.ser2net }}" = 4.6.7 ]; then
+            apt-get install -y --no-install-recommends \
+              autoconf automake gcc git libtool libyaml-dev make pkg-config
+            git clone --depth=1 -b v3.0.2 https://github.com/cminyard/gensio.git /tmp/gensio
+            cd /tmp/gensio
+            autoreconf -i
+            ./configure --prefix=/tmp/gensio-install --enable-static --disable-shared \
+              --with-all-gensios=no --with-net=yes --with-telnet=yes --with-serialdev=yes \
+              --with-pthreads=yes --without-openssl --without-swig --without-python \
+              --without-tcl --without-glib
+            make -j"$(nproc)"
+            mkdir -p /tmp/gensio-install/libexec/gensio/3.0.2
+            make install
+            git clone --depth=1 -b v4.6.7 https://github.com/cminyard/ser2net.git /tmp/ser2net
+            cd /tmp/ser2net
+            autoreconf -i
+            LDFLAGS=-L/tmp/gensio-install/lib CPPFLAGS=-I/tmp/gensio-install/include \
+              LIBS="-lgensioosh -lpthread" ./configure --with-pam=no
+            make -j"$(nproc)" LDFLAGS="-all-static -L/tmp/gensio-install/lib"
+            make install
+          else
+            apt-get install -y --no-install-recommends ser2net
+          fi
+          # `ser2net -v` exits 1.
+          (ser2net -v || true) | grep -F "ser2net version ${{ matrix.ser2net }}"
+
+      - name: Install dependencies
+        run: uv sync --locked --extra dev
+
+      - name: Test against ser2net
+        env:
+          SER2NET_HOST: 127.0.0.1
+          SER2NET_PORT: "2217"
+          SER2NET_DEVICE: /tmp/devA
+          SER2NET_PEER: /tmp/devB
+          SER2NET_KILL: pkill -x ser2net
+        run: |
+          set -euo pipefail
+          # ser2net serves one end of a pseudo-terminal pair; a device prints into the other.
+          socat pty,raw,echo=0,link=/tmp/devA pty,raw,echo=0,link=/tmp/devB &
+          until [ -e /tmp/devB ]; do sleep 0.1; done
+          cat > /tmp/ser2net.yaml <<'EOF'
+          %YAML 1.1
+          ---
+          connection: &dut
+            accepter: telnet(rfc2217),tcp,2217
+            connector: serialdev,/tmp/devA,9600n81,local
+          EOF
+          ser2net -n -c /tmp/ser2net.yaml > /tmp/ser2net.log 2>&1 &
+          cat > /tmp/device.py <<'EOF'
+          import itertools, os, time
+          fd = os.open("/tmp/devB", os.O_WRONLY)
+          for seq in itertools.count():
+              os.write(fd, b"L%08d\n" % seq)
+              time.sleep(0.005)
+          EOF
+          python3 /tmp/device.py &
+          until (exec 3<>/dev/tcp/127.0.0.1/2217) 2>/dev/null; do sleep 0.1; done
+          uv run pytest tests/test_rfc2217.py -v
