@@ -1,0 +1,35 @@
+# zephyr log_output.c prints raw ticks as "[%010lu] " when timestamps are not formatted
+# constructed [0000000000] <inf> domain/src: test ⇒ {"rule": "zephyr-ticks", "level": "info", "name": "src", "module": "src", "device_ns": null, "message": "domain/src: test", "prefixed": true}
+# constructed [0000012345] <inf> main: Info message example. ⇒ {"rule": "zephyr-ticks", "level": "info", "module": "main", "device_ns": null}
+# constructed [0000032768] <err> main: Error message example. ⇒ {"rule": "zephyr-ticks", "level": "error", "module": "main"}
+# constructed [0000032770] <wrn> main: Warning message example. ⇒ {"rule": "zephyr-ticks", "level": "warn"}
+# constructed [0000065536] <dbg> main.main: debug ⇒ {"rule": "zephyr-ticks", "level": "debug", "module": "main", "message": "main.main: debug"}
+# constructed [4294967295] <inf> main: wrap ⇒ {"rule": "zephyr-ticks", "device_ns": null}
+# constructed [0000000100] <inf> dcdc: rail=13.65V in=4.50A ⇒ {"rule": "zephyr-ticks+kv", "module": "dcdc", "values": [["rail", 13.65, "V"], ["in", 4.5, "A"]]}
+# constructed [0000000200] <wrn> bms: cell imbalance 37mV ⇒ {"rule": "zephyr-ticks", "level": "warn", "module": "bms", "values": []}
+# constructed [0000003000] <inf> sample_instance.inst1: Inline call. ⇒ {"rule": "zephyr-ticks", "module": "sample_instance"}
+# constructed [0000003001] <inf> sample_module: log in test_module 11 ⇒ {"rule": "zephyr-ticks", "module": "sample_module", "message": "sample_module: log in test_module 11"}
+# constructed [0000003002] <err> ext_log_system: critical level log ⇒ {"rule": "zephyr-ticks", "level": "error", "module": "ext_log_system"}
+# constructed [0000003003] <inf> ext-log: dash ⇒ {"rule": "zephyr-ticks", "module": "ext-log"}
+# constructed [0000003004] <inf> main counter 5 ⇒ {"rule": "zephyr-ticks", "module": "main", "message": "main counter 5"}
+# constructed [0000003005] <dbg> net/coap.coap_send: sent 12 bytes ⇒ {"rule": "zephyr-ticks", "level": "debug", "module": "coap", "message": "net/coap.coap_send: sent 12 bytes"}
+# constructed [0000003006] <inf> main: seq=42 ⇒ {"rule": "zephyr-ticks+kv", "values": [["seq", 42, null]]}
+# constructed [0000003007] <wrn> main: --- 3 messages dropped --- ⇒ {"rule": "zephyr-ticks", "level": "warn"}
+# log_output_test.c with CONFIG_LOG_TIMESTAMP_64BIT, level flag added
+# constructed [00000000000000000000] <inf> domain/src: test ⇒ {"rule": "zephyr-ticks", "module": "src", "device_ns": null, "prefixed": true}
+# constructed [18446744073709551615] <err> main: wrap ⇒ {"rule": "zephyr-ticks", "level": "error"}
+
+# log_output_test.c expectation without the level flag
+[0000000000] domain/src: test ⇒ {"rule": "plain"}
+# constructed [000000000] <inf> main: x ⇒ {"rule": "plain"}
+# constructed [00000000000] <inf> main: x ⇒ {"rule": "plain"}
+# constructed [000000000a] <inf> main: x ⇒ {"rule": "plain"}
+# constructed [0000000000] <info> main: x ⇒ {"rule": "plain"}
+# constructed [0000000000]<inf> main: x ⇒ {"rule": "plain"}
+# constructed [0000000000] <inf>main: x ⇒ {"rule": "plain"}
+# constructed [0000000000] <INF> main: x ⇒ {"rule": "plain"}
+# constructed [ 000000000] <inf> main: x ⇒ {"rule": "plain"}
+# constructed [0000000000] <inf> main:x ⇒ {"rule": "plain"}
+# constructed [000000000000000] <inf> main: x ⇒ {"rule": "plain"}
+# constructed [000000000000000000000] <inf> main: x ⇒ {"rule": "plain"}
+[00:00:00.106,051] <inf> sample_module: log in test_module 11 ⇒ {"rule": "zephyr"}

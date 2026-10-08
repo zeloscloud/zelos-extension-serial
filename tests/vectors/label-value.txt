@@ -1,0 +1,114 @@
+# zephyr samples/subsys/logging/logger/README.rst: two instances share one module
+---
+[00:00:00.106,204] <inf> sample_instance.inst1: counter_value: 0 ⇒ {"rule": "zephyr", "values": []}
+[00:00:00.106,218] <inf> sample_instance.inst2: counter_value: 0 ⇒ {"rule": "zephyr+label-value", "module": "sample_instance", "values": [["counter_value", 0, null]]}
+[00:00:00.106,307] <inf> sample_instance.inst2: counter_value: 1 ⇒ {"rule": "zephyr+label-value", "values": [["counter_value", 1, null]]}
+---
+---
+# constructed Temp: 23.5 C ⇒ {"rule": "plain", "values": []}
+# constructed Temp: 23.7 C ⇒ {"rule": "plain+label-value", "level": "info", "prefixed": false, "values": [["Temp", 23.7, "C"]]}
+# constructed Temp: 24 C  ⇒ {"rule": "plain+label-value", "values": [["Temp", 24, "C"]]}
+---
+---
+Note: 5 items ⇒ {"rule": "plain", "values": []}
+Note: 5 items ⇒ {"rule": "plain+label-value", "values": [["Note", 5, "items"]]}
+---
+---
+Error count: 5 ⇒ {"rule": "plain", "level": "info", "values": []}
+Error count: 6 ⇒ {"rule": "plain+label-value", "level": "info", "values": [["Error count", 6, null]]}
+---
+---
+# constructed I (629) main: Free heap: 234560 ⇒ {"rule": "esp-idf", "values": []}
+# constructed I (1629) main: Free heap: 230112 ⇒ {"rule": "esp-idf+label-value", "module": "main", "values": [["Free heap", 230112, null]]}
+---
+---
+# constructed Battery voltage: 3.7 V ⇒ {"rule": "plain", "values": []}
+# constructed Battery voltage: 3.6 V ⇒ {"rule": "plain+label-value", "values": [["Battery voltage", 3.6, "V"]]}
+---
+---
+# constructed CPU temp: 41 C ⇒ {"rule": "plain", "values": []}
+# constructed CPU temp: 42 C ⇒ {"rule": "plain+label-value", "values": [["CPU temp", 42, "C"]]}
+---
+---
+# constructed Battery level : 87 % ⇒ {"rule": "plain", "values": []}
+# constructed Battery level : 86 % ⇒ {"rule": "plain+label-value", "values": [["Battery level", 86, "%"]]}
+# constructed Battery level : 85% ⇒ {"rule": "plain+label-value", "values": [["Battery level", 85, "%"]]}
+---
+---
+# constructed Pressure:   -1.5e3 Pa ⇒ {"rule": "plain", "values": []}
+# constructed Pressure: 101.3 kPa ⇒ {"rule": "plain+label-value", "values": [["Pressure", 101.3, "kPa"]]}
+# constructed Pressure: 1e999 kPa ⇒ {"rule": "plain", "values": []}
+# constructed Pressure: 99.8 kPa ⇒ {"rule": "plain+label-value", "values": [["Pressure", 99.8, "kPa"]]}
+---
+---
+# constructed Outside temp: 21 °C ⇒ {"rule": "plain", "values": []}
+# constructed Outside temp: 20 °C ⇒ {"rule": "plain+label-value", "values": [["Outside temp", 20, "°C"]]}
+---
+---
+# constructed Voltage: 3.30 V ⇒ {"rule": "plain", "values": []}
+# constructed Voltage: 3.29 V ⇒ {"rule": "plain+label-value", "values": [["Voltage", 3.29, "V"]]}
+# constructed Voltage: 3.28 V ⇒ {"rule": "plain+label-value", "values": [["Voltage", 3.28, "V"]]}
+---
+# constructed Mains: 230 V ⇒ {"rule": "plain", "values": []}
+
+# u-boot common/autoboot.c redraws its countdown with a bare carriage return; a boot log frees memory twice
+---
+Hit any key to stop autoboot:  2 ⇒ {"rule": "plain", "values": []}
+Hit any key to stop autoboot:  1 ⇒ {"rule": "plain", "values": []}
+Hit any key to stop autoboot:  0 ⇒ {"rule": "plain", "values": []}
+# constructed Freeing unused kernel memory: 1234K ⇒ {"rule": "plain", "values": []}
+# constructed Freeing unused kernel memory: 1234K ⇒ {"rule": "plain", "values": []}
+[    0.275950] Freeing unused kernel image (initmem) memory: 540K ⇒ {"rule": "linux", "values": []}
+[    0.353347] Freeing unused kernel memory: 88K ⇒ {"rule": "linux", "values": []}
+[    0.353347] Freeing unused kernel memory: 88K ⇒ {"rule": "linux", "values": []}
+---
+---
+E: 5 ⇒ {"rule": "plain", "values": []}
+E: 5 ⇒ {"rule": "plain", "values": []}
+---
+---
+Note: 5 items ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed Temp: hot ⇒ {"rule": "plain", "values": []}
+# constructed Temp: hot ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed Temp: 0x1F ⇒ {"rule": "plain", "values": []}
+# constructed Temp: 0x1F ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed Temp: 5 C extra ⇒ {"rule": "plain", "values": []}
+# constructed Temp: 5 C extra ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 1st: 5 ⇒ {"rule": "plain", "values": []}
+# constructed 1st: 5 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed A label that is far too long to be one: 5 ⇒ {"rule": "plain", "values": []}
+# constructed A label that is far too long to be one: 5 ⇒ {"rule": "plain", "values": []}
+---
+# a NUCLEO-H753ZI Zephyr app logs each failed CAN send by its frame ID; the ID is not a label
+---
+[08:25:10.378,000] <wrn> zelos_can: send of 0x300: -114 ⇒ {"rule": "zephyr", "values": []}
+[08:25:10.378,000] <wrn> zelos_can: send of 0x300: -114 ⇒ {"rule": "zephyr", "values": []}
+[00:00:02.475,000] <wrn> zelos_can: send of 0xcf00480: -11 ⇒ {"rule": "zephyr", "values": []}
+[00:00:02.576,000] <wrn> zelos_can: send of 0xcf00480: -11 ⇒ {"rule": "zephyr", "values": []}
+---
+---
+# constructed Time: 12:30 ⇒ {"rule": "plain", "values": []}
+# constructed Time: 12:30 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed Version: 1.2.3 ⇒ {"rule": "plain", "values": []}
+# constructed Version: 1.2.3 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed Temp:5 ⇒ {"rule": "plain+plotter-labelled"}
+# constructed Temp:5 ⇒ {"rule": "plain+plotter-labelled"}
+---
+---
+# constructed Speed: 10 rpm ⇒ {"rule": "plain", "values": []}
+# constructed Speed 10 rpm ⇒ {"rule": "plain", "values": []}
+---

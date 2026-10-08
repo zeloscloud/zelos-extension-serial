@@ -1,0 +1,36 @@
+# arduino-esp32 docs/en/troubleshooting.rst
+[ 1065][E][sd_diskio.cpp:807] sdcard_mount(): f_mount failed: (3) The physical drive cannot work ⇒ {"rule": "arduino-esp32", "level": "error", "name": "sd_diskio", "module": "sd_diskio", "device_ns": 1065000000, "file": "sd_diskio.cpp", "line_no": 807, "message": "[sd_diskio.cpp:807] sdcard_mount(): f_mount failed: (3) The physical drive cannot work", "prefixed": true}
+# espressif/arduino-esp32 issues #12469, #12520, #12798 and #12367
+[  1353][D][ZigbeeCore.cpp:116] addEndpoint(): Endpoint: 10, Device ID: 0x0302 ⇒ {"rule": "arduino-esp32", "level": "debug", "module": "ZigbeeCore", "file": "ZigbeeCore.cpp", "line_no": 116, "values": []}
+[  1354][D][ZigbeeCore.cpp:164] zigbeeInit(): Initialize Zigbee stack ⇒ {"rule": "arduino-esp32", "level": "debug", "device_ns": 1354000000, "message": "[ZigbeeCore.cpp:164] zigbeeInit(): Initialize Zigbee stack"}
+[  1415][I][ZigbeeCore.cpp:179] zigbeeInit(): List of registered Zigbee EPs: ⇒ {"rule": "arduino-esp32", "level": "info", "line_no": 179}
+[  1421][I][ZigbeeCore.cpp:275] esp_zb_app_signal_handler(): Zigbee stack initialized ⇒ {"rule": "arduino-esp32", "message": "[ZigbeeCore.cpp:275] esp_zb_app_signal_handler(): Zigbee stack initialized"}
+[  2629][I][esp32-hal-periman.c:141] perimanSetPinBus(): Pin 18 already has type USB_DM (38) with bus 0x3fc9053c ⇒ {"rule": "arduino-esp32", "module": "esp32-hal-periman", "file": "esp32-hal-periman.c", "values": []}
+[  2631][D][esp32-hal-i2c-slave.c:561] i2c_slave_set_frequency(): Fifo thresholds: rx_fifo_full = 28, tx_fifo_empty = 4 ⇒ {"rule": "arduino-esp32", "module": "esp32-hal-i2c-slave", "values": []}
+[  2631][I][esp32-hal-i2c-slave.c:272] i2cSlaveInit(): Initializing I2C Slave: sda=5 scl=6 freq=100000, addr=0x33 ⇒ {"rule": "arduino-esp32+kv", "module": "esp32-hal-i2c-slave", "values": [["sda", 5, null], ["scl", 6, null], ["freq", 100000, null]]}
+[  3071][I][esp32-hal-i2c-ng.c:112] i2cInit(): Initializing I2C Master: num=0 sda=5 scl=6 freq=100000 ⇒ {"rule": "arduino-esp32+kv", "module": "esp32-hal-i2c-ng", "device_ns": 3071000000, "values": [["num", 0, null], ["sda", 5, null], ["scl", 6, null], ["freq", 100000, null]]}
+[ 18630][I][ZigbeeEP.cpp:494] zbReadBasicCluster(): Peer Model is "ZBLightBulb" ⇒ {"rule": "arduino-esp32", "module": "ZigbeeEP", "device_ns": 18630000000}
+[ 19606][E][ZigbeeEP.cpp:153] readClusterAttribute(): Failed to read attribute: 0x3: ERROR ⇒ {"rule": "arduino-esp32", "level": "error", "message": "[ZigbeeEP.cpp:153] readClusterAttribute(): Failed to read attribute: 0x3: ERROR", "values": []}
+[ 19607][E][ZigbeeSwitch.cpp:419] getLightState(): Failed to send read light state command ⇒ {"rule": "arduino-esp32", "level": "error", "module": "ZigbeeSwitch"}
+[ 24256][D][NetworkClient.cpp:593] connected(): Disconnected: RES: 0, ERR: 128 ⇒ {"rule": "arduino-esp32", "level": "debug", "module": "NetworkClient", "values": []}
+[177731][I][ZigbeeGateway.cpp:2771] zb_ota_next_data_handler(): size = 7 ⇒ {"rule": "arduino-esp32", "device_ns": 177731000000, "line_no": 2771, "values": []}
+[178134][I][ZigbeeHandlers.cpp:262] zb_raw_cmd_handler(): RAW bufid: 12 size: 14 ⇒ {"rule": "arduino-esp32", "values": []}
+[200457][I][ZigbeeHandlers.cpp:265] zb_raw_cmd_handler(): 0x00 //field control ⇒ {"rule": "arduino-esp32", "message": "[ZigbeeHandlers.cpp:265] zb_raw_cmd_handler(): 0x00 //field control", "values": []}
+# esp32-hal-log.h ARDUHAL_LOG_FORMAT: "[%6u][L][%s:%u] %s(): "
+# constructed [  1234][I][main.cpp:12] setup(): hello ⇒ {"rule": "arduino-esp32", "module": "main", "file": "main.cpp", "line_no": 12, "message": "[main.cpp:12] setup(): hello"}
+# constructed [  1234][V][main.cpp:12] loop(): verbose ⇒ {"rule": "arduino-esp32", "level": "trace"}
+# constructed [  1234][W][sketch.ino:7] hello ⇒ {"rule": "arduino-esp32", "level": "warn", "module": "sketch", "message": "[sketch.ino:7] hello"}
+# constructed [12345678][I][main.cpp:40] loop(): t=25.5C ⇒ {"rule": "arduino-esp32+kv", "device_ns": 12345678000000, "values": [["t", 25.5, "C"]]}
+
+# constructed [  1234][X][main.cpp:12] setup(): hello ⇒ {"rule": "plain"}
+# constructed [  1234][I][main.cpp] setup(): hello ⇒ {"rule": "plain"}
+# constructed [  1234][I][main.cpp:12]setup(): hello ⇒ {"rule": "plain"}
+# constructed [  1234][I][main.cpp:12a] setup(): hello ⇒ {"rule": "plain"}
+# constructed [ abc][I][main.cpp:12] setup(): hello ⇒ {"rule": "plain"}
+# constructed [  1234] [I] [main.cpp:12] setup(): hello ⇒ {"rule": "plain"}
+# constructed [  1234][i][main.cpp:12] setup(): hello ⇒ {"rule": "plain"}
+# constructed [I][main.cpp:12] setup(): hello ⇒ {"rule": "plain"}
+# ArduinoLog prints one level letter and ": "
+# constructed I: hello ⇒ {"rule": "plain", "level": "info"}
+E (588) SPIFFS: mount failed, -10025 ⇒ {"rule": "esp-idf"}
+[    0.000000] Booting Linux on physical CPU 0x0 ⇒ {"rule": "linux"}

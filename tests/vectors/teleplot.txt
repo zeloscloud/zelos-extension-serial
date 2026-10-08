@@ -1,0 +1,37 @@
+# nesnes/teleplot README.md examples; a serial line carries a leading ">" (serverMessageReading.js)
+>myValue:1234 ⇒ {"rule": "plain+teleplot", "level": "info", "prefixed": false, "values": [["myValue", 1234, null]]}
+>myValue:1234| ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, null]]}
+>myValue:12.34e+2 ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, null]]}
+>myValue:1627551892437:1234 ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, null]]}
+>myValue:1234§km² ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, "km²"]]}
+>myValue:1234|g ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, null]]}
+>myValue:1627551892437:1234|np ⇒ {"rule": "plain+teleplot", "values": [["myValue", 1234, null]]}
+>myValue:1627551892444:1;1627551892555:2;1627551892666:3 ⇒ {"rule": "plain+teleplot", "values": [["myValue", 3, null]]}
+>myValue:1627551892444:1;1627551892555:2;1627551892666:3§rad ⇒ {"rule": "plain+teleplot", "values": [["myValue", 3, "rad"]]}
+>myThirdValue:1627551892437:1234 ⇒ {"rule": "plain+teleplot", "values": [["myThirdValue", 1234, null]]}
+# constructed >temp:23.5§°C ⇒ {"rule": "plain+teleplot", "values": [["temp", 23.5, "°C"]]}
+# constructed >a:1;2;3 ⇒ {"rule": "plain+teleplot", "values": [["a", 3, null]]}
+# constructed >motor current:-0.25§A|clr ⇒ {"rule": "plain+teleplot", "values": [["motor current", -0.25, "A"]]}
+# constructed >_raw:.5 ⇒ {"rule": "plain+teleplot", "values": [["_raw", 0.5, null]]}
+# constructed >temp:23.5  ⇒ {"rule": "plain+teleplot", "values": [["temp", 23.5, null]]}
+# constructed [00:00:01.000,000] <inf> main: >rpm:1200 ⇒ {"rule": "zephyr+teleplot", "module": "main", "values": [["rpm", 1200, null]]}
+# constructed I (100) main: >rpm:1200§rpm ⇒ {"rule": "esp-idf+teleplot", "values": [["rpm", 1200, "rpm"]]}
+# constructed >motor.rpm:1200 ⇒ {"rule": "plain+teleplot", "values": [["motor.rpm", 1200, null]]}
+# constructed >imu/ax:0.5 ⇒ {"rule": "plain+teleplot", "values": [["imu/ax", 0.5, null]]}
+# constructed >temp:+23.5 ⇒ {"rule": "plain+teleplot", "values": [["temp", 23.5, null]]}
+
+>myValue:hello|t ⇒ {"rule": "plain", "values": []}
+>motor_4_state:1627551892437:Off|t ⇒ {"rule": "plain", "values": []}
+>trajectory:12.3:45.67|xy ⇒ {"rule": "plain", "values": []}
+>trajectory:1:1;2:2;3:3;4:4|xy ⇒ {"rule": "plain", "values": []}
+>trajectory:12.3:45.67|xy,np ⇒ {"rule": "plain", "values": []}
+>3D|mySimpleCube:S:cube:P:1:1:1:R:0:0:0:W:2:H:2:D:2:C:#2ecc71 ⇒ {"rule": "plain", "values": []}
+>:Hello world ⇒ {"rule": "plain", "values": []}
+>1627551892437:Hello world ⇒ {"rule": "plain", "values": []}
+>mySecondValue:1234:m/s ⇒ {"rule": "plain", "values": []}
+myValue:1234 ⇒ {"rule": "plain+plotter-labelled"}
+# constructed >flags:0xFF ⇒ {"rule": "plain", "values": []}
+# constructed >big:1e999 ⇒ {"rule": "plain", "values": []}
+# constructed >x:1|t x=5 ⇒ {"rule": "plain", "values": []}
+# constructed >>> 1+1 ⇒ {"rule": "plain", "values": []}
+# constructed > set x=5 ⇒ {"rule": "plain", "values": []}

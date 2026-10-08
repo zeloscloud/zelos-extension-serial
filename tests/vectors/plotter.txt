@@ -1,0 +1,136 @@
+# arduino-serial-plotter-webapp msgAggregatorWorker.test.ts, "multi-field" over each delimiter;
+# the third line of one shape is the first that plots
+---
+1,2 ⇒ {"rule": "plain", "values": []}
+3,4 ⇒ {"rule": "plain", "values": []}
+5,6 ⇒ {"rule": "plain+plotter", "level": "info", "prefixed": false, "values": [["value1", 5, null], ["value2", 6, null]]}
+7,8 ⇒ {"rule": "plain+plotter", "values": [["value1", 7, null], ["value2", 8, null]]}
+9,10 ⇒ {"rule": "plain+plotter", "values": [["value1", 9, null], ["value2", 10, null]]}
+---
+---
+1 2  ⇒ {"rule": "plain"}
+3 4  ⇒ {"rule": "plain"}
+5 6  ⇒ {"rule": "plain+plotter", "values": [["value1", 5, null], ["value2", 6, null]]}
+---
+---
+1	2 ⇒ {"rule": "plain"}
+3	4 ⇒ {"rule": "plain"}
+5	6 ⇒ {"rule": "plain+plotter", "values": [["value1", 5, null], ["value2", 6, null]]}
+7	8	 ⇒ {"rule": "plain+plotter", "values": [["value1", 7, null], ["value2", 8, null]]}
+---
+---
+# constructed 1,2,3, ⇒ {"rule": "plain"}
+# constructed 4,5,6, ⇒ {"rule": "plain"}
+# constructed 7,8,9, ⇒ {"rule": "plain+plotter", "values": [["value1", 7, null], ["value2", 8, null], ["value3", 9, null]]}
+# constructed -1.5,2e3,.25 ⇒ {"rule": "plain+plotter", "values": [["value1", -1.5, null], ["value2", 2000, null], ["value3", 0.25, null]]}
+# constructed 1e999,2,3 ⇒ {"rule": "plain+plotter", "values": [["value2", 2, null], ["value3", 3, null]]}
+---
+# three analogRead() columns printed with Serial.print(" ")
+---
+# constructed 512 498 1023 ⇒ {"rule": "plain"}
+# constructed 511 499 1023 ⇒ {"rule": "plain"}
+# constructed 510 500 1022 ⇒ {"rule": "plain+plotter", "values": [["value1", 510, null], ["value2", 500, null], ["value3", 1022, null]]}
+# constructed 509 501 1021 ⇒ {"rule": "plain+plotter", "values": [["value1", 509, null], ["value2", 501, null], ["value3", 1021, null]]}
+# constructed 508 502 1020 ⇒ {"rule": "plain+plotter", "values": [["value1", 508, null], ["value2", 502, null], ["value3", 1020, null]]}
+---
+# printf("%6d %6d\n") right-aligns its columns
+---
+# constructed     12     34 ⇒ {"rule": "plain"}
+# constructed    120    340 ⇒ {"rule": "plain"}
+# constructed   1200   3400 ⇒ {"rule": "plain+plotter", "values": [["value1", 1200, null], ["value2", 3400, null]]}
+# constructed  12000  34000 ⇒ {"rule": "plain+plotter", "values": [["value1", 12000, null], ["value2", 34000, null]]}
+---
+# a shape change starts the count again
+---
+# constructed 1,2 ⇒ {"rule": "plain"}
+# constructed 1,2 ⇒ {"rule": "plain"}
+# constructed 1,2,3 ⇒ {"rule": "plain"}
+# constructed 1,2,3 ⇒ {"rule": "plain"}
+# constructed 1,2,3 ⇒ {"rule": "plain+plotter", "values": [["value1", 1, null], ["value2", 2, null], ["value3", 3, null]]}
+---
+---
+# constructed [00:00:01.000,000] <inf> adc: 1 2 ⇒ {"rule": "zephyr"}
+# constructed [00:00:02.000,000] <inf> adc: 3 4 ⇒ {"rule": "zephyr"}
+# constructed [00:00:03.000,000] <inf> adc: 5 6 ⇒ {"rule": "zephyr+plotter", "module": "adc", "values": [["value1", 5, null], ["value2", 6, null]]}
+---
+
+---
+v1.2.3 ⇒ {"rule": "plain", "values": []}
+v1.2.3 ⇒ {"rule": "plain", "values": []}
+v1.2.3 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 42 ⇒ {"rule": "plain", "values": []}
+# constructed 42 ⇒ {"rule": "plain", "values": []}
+# constructed 42 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 1,2 ⇒ {"rule": "plain"}
+# constructed 1,2,3 ⇒ {"rule": "plain"}
+# constructed 1,2 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 1,2 ⇒ {"rule": "plain"}
+# constructed 1,2 ⇒ {"rule": "plain"}
+# constructed seq=42 ⇒ {"rule": "plain+kv"}
+# constructed 1,2 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 0x1F,0x2F ⇒ {"rule": "plain", "values": []}
+# constructed 0x1F,0x2F ⇒ {"rule": "plain", "values": []}
+# constructed 0x1F,0x2F ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 1.2.3,4 ⇒ {"rule": "plain", "values": []}
+# constructed 1.2.3,4 ⇒ {"rule": "plain", "values": []}
+# constructed 1.2.3,4 ⇒ {"rule": "plain", "values": []}
+---
+---
+12:30 ⇒ {"rule": "plain", "values": []}
+12:31 ⇒ {"rule": "plain", "values": []}
+12:32 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed 1;2;3 ⇒ {"rule": "plain", "values": []}
+# constructed 1;2;3 ⇒ {"rule": "plain", "values": []}
+# constructed 1;2;3 ⇒ {"rule": "plain", "values": []}
+---
+---
+# constructed nan,1 ⇒ {"rule": "plain", "values": []}
+# constructed nan,1 ⇒ {"rule": "plain", "values": []}
+# constructed nan,1 ⇒ {"rule": "plain", "values": []}
+---
+---
+I (954) MyModule: 54 68 65 20 77 61 79 20 74 6f 20 67 65 74 20 73 ⇒ {"rule": "esp-idf", "values": []}
+I (964) MyModule: 74 61 72 74 65 64 20 69 73 20 61 6e 64 20 66 ⇒ {"rule": "esp-idf", "values": []}
+# constructed I (974) MyModule: 74 61 72 74 65 64 20 69 73 20 61 6e 64 20 66 ⇒ {"rule": "esp-idf", "values": []}
+---
+# ESP_LOG_BUFFER_HEX prints "%02x " for each byte: a hex dump, not columns
+---
+# constructed I (123) tag: 10 20 30 40 50 60 70 80 ⇒ {"rule": "esp-idf", "values": []}
+# constructed I (133) tag: 10 20 30 40 50 60 70 80 ⇒ {"rule": "esp-idf", "values": []}
+# constructed I (143) tag: 10 20 30 40 50 60 70 80 ⇒ {"rule": "esp-idf", "values": []}
+---
+# without a log prefix, eight two-digit columns are a plotter line
+---
+# constructed 12 34 56 78 90 11 22 33 ⇒ {"rule": "plain", "values": []}
+# constructed 12 34 56 78 90 11 22 33 ⇒ {"rule": "plain", "values": []}
+# constructed 12 34 56 78 90 11 22 33 ⇒ {"rule": "plain+plotter", "values": [["value1", 12, null], ["value2", 34, null], ["value3", 56, null], ["value4", 78, null], ["value5", 90, null], ["value6", 11, null], ["value7", 22, null], ["value8", 33, null]]}
+---
+# fewer bytes, or other separators, still plot
+---
+# constructed 10 20 30 40 ⇒ {"rule": "plain"}
+# constructed 10 20 30 40 ⇒ {"rule": "plain"}
+# constructed 10 20 30 40 ⇒ {"rule": "plain+plotter", "values": [["value1", 10, null], ["value2", 20, null], ["value3", 30, null], ["value4", 40, null]]}
+---
+---
+# constructed 10,20,30,40,50,60,70,80 ⇒ {"rule": "plain"}
+# constructed 10,20,30,40,50,60,70,80 ⇒ {"rule": "plain"}
+# constructed 10,20,30,40,50,60,70,80 ⇒ {"rule": "plain+plotter", "values": [["value1", 10, null], ["value2", 20, null], ["value3", 30, null], ["value4", 40, null], ["value5", 50, null], ["value6", 60, null], ["value7", 70, null], ["value8", 80, null]]}
+---
+# a zero-padded column is decimal
+---
+# constructed 007 008 ⇒ {"rule": "plain", "values": []}
+# constructed 007 008 ⇒ {"rule": "plain", "values": []}
+# constructed 007 008 ⇒ {"rule": "plain+plotter", "values": [["value1", 7, null], ["value2", 8, null]]}
+---

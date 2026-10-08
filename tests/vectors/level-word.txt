@@ -1,0 +1,51 @@
+# constructed ERROR: invalid argument ⇒ {"rule": "level-word", "level": "error", "name": "", "module": null, "device_ns": null, "message": "invalid argument", "prefixed": false}
+# constructed ERR: no response ⇒ {"rule": "level-word", "level": "error", "message": "no response"}
+# constructed FATAL: stack overflow ⇒ {"rule": "level-word", "level": "critical"}
+# constructed CRITICAL brownout ⇒ {"rule": "level-word", "level": "critical", "message": "brownout"}
+# constructed WARNING: low battery ⇒ {"rule": "level-word", "level": "warn"}
+# constructed DEBUG state=3 ⇒ {"rule": "level-word+kv", "level": "debug", "message": "state=3", "values": [["state", 3, null]]}
+# constructed TRACE enter isr ⇒ {"rule": "level-word", "level": "trace"}
+# constructed Error: invalid argument ⇒ {"rule": "level-word", "level": "error", "message": "invalid argument"}
+# constructed Warn: retrying ⇒ {"rule": "level-word", "level": "warn"}
+# constructed Fatal: halted ⇒ {"rule": "level-word", "level": "critical"}
+# constructed Info:ready ⇒ {"rule": "level-word", "level": "info", "message": "ready"}
+# constructed Debug: tick ⇒ {"rule": "level-word", "level": "debug"}
+# constructed [error] bus fault ⇒ {"rule": "level-word", "level": "error", "message": "bus fault"}
+# constructed [Warning]low voltage ⇒ {"rule": "level-word", "level": "warn", "message": "low voltage"}
+# constructed [ERR] timeout ⇒ {"rule": "level-word", "level": "error"}
+# constructed [fatal] panic ⇒ {"rule": "level-word", "level": "critical"}
+# constructed [Trace] step ⇒ {"rule": "level-word", "level": "trace"}
+# esp-println logger.rs: "{level} ({ts}) - {msg}" and "{level} - {msg}"
+# constructed INFO - booted ⇒ {"rule": "level-word", "level": "info", "message": "- booted"}
+# constructed WARN (1234) - slow ⇒ {"rule": "level-word", "level": "warn", "device_ns": null}
+# mbed-trace mbed_trace.c: "[INFO][grp ]: msg"
+# constructed [INFO][main]: started ⇒ {"rule": "level-word", "level": "info", "message": "[main]: started"}
+# constructed [WARN][main]: low battery ⇒ {"rule": "level-word", "level": "warn", "prefixed": false}
+# constructed [ERR ][main]: failed ⇒ {"rule": "level-word", "level": "error", "message": "[main]: failed"}
+# constructed [DBG ][main]: detail ⇒ {"rule": "level-word", "level": "debug", "message": "[main]: detail"}
+# constructed [ WARN] padded on the left ⇒ {"rule": "level-word", "level": "warn"}
+# constructed [WRN] low battery ⇒ {"rule": "level-word", "level": "warn", "message": "low battery"}
+# constructed [INF] up ⇒ {"rule": "level-word", "level": "info", "message": "up"}
+# constructed [CRIT] brownout ⇒ {"rule": "level-word", "level": "critical", "message": "brownout"}
+# constructed [crit] brownout ⇒ {"rule": "level-word", "level": "critical"}
+
+Error count: 5 ⇒ {"rule": "plain", "level": "info", "prefixed": false, "values": []}
+# constructed error: lower case ⇒ {"rule": "plain", "level": "info"}
+# constructed Errors: 3 ⇒ {"rule": "plain"}
+# constructed INFORMATION: x ⇒ {"rule": "plain"}
+# constructed ERRORS x ⇒ {"rule": "plain"}
+# constructed Warning low voltage ⇒ {"rule": "plain"}
+# constructed [information] x ⇒ {"rule": "plain"}
+# constructed ERROR ⇒ {"rule": "plain"}
+# constructed [ERR ⇒ {"rule": "plain"}
+# constructed [ERRO ] x ⇒ {"rule": "plain"}
+# constructed [_ERR] x ⇒ {"rule": "plain"}
+# constructed [ınfo] x ⇒ {"rule": "plain", "level": "info", "message": "[ınfo] x"}
+# constructed [İnfo] x ⇒ {"rule": "plain", "level": "info", "message": "[İnfo] x"}
+# constructed [crıtıcal] x ⇒ {"rule": "plain", "level": "info", "message": "[crıtıcal] x"}
+# micropython py/obj.c traceback
+Traceback (most recent call last): ⇒ {"rule": "plain"}
+ZeroDivisionError: division by zero ⇒ {"rule": "plain", "level": "info"}
+# constructed  ERROR: leading space ⇒ {"rule": "plain"}
+# constructed CRIT: no colon form for the short words ⇒ {"rule": "plain"}
+# constructed [CRITICALLY] x ⇒ {"rule": "plain"}

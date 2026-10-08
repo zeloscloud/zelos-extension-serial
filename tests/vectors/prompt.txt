@@ -1,0 +1,42 @@
+# zephyr samples/subsys/shell/shell_module/README.rst
+uart:~$  ⇒ {"prompt": true}
+uart:~$ ⇒ {"prompt": true}
+#  ⇒ {"prompt": true}
+$  ⇒ {"prompt": true}
+>>>  ⇒ {"prompt": true}
+...  ⇒ {"prompt": true}
+=>  ⇒ {"prompt": true}
+=> ⇒ {"prompt": true}
+# constructed root@host:~#  ⇒ {"prompt": true}
+# constructed root@buildroot:~#  ⇒ {"prompt": true}
+# constructed buildroot login:  ⇒ {"prompt": true}
+# constructed Password:  ⇒ {"prompt": true}
+# constructed password: ⇒ {"prompt": true}
+# constructed nsh>  ⇒ {"prompt": true}
+# constructed U-Boot>  ⇒ {"prompt": true}
+# constructed bash-5.2$  ⇒ {"prompt": true}
+# constructed rtt:~$  ⇒ {"prompt": true}
+# esp-idf examples/system/console/basic/README.md types `help` after this prompt
+# constructed [esp32]>  ⇒ {"prompt": true}
+# constructed [esp32]> ⇒ {"prompt": true}
+# constructed pi@raspberrypi:~ $  ⇒ {"prompt": true}
+# constructed root@host:~ #  ⇒ {"prompt": true}
+
+# ⇒ {"prompt": false, "rule": "plain"}
+> ⇒ {"prompt": false, "rule": "plain"}
+-> ⇒ {"prompt": false, "rule": "plain"}
+5$ ⇒ {"prompt": false, "rule": "plain"}
+$ ⇒ {"prompt": false, "rule": "plain"}
+>> ⇒ {"prompt": false, "rule": "plain"}
+....  ⇒ {"prompt": false, "rule": "plain"}
+uart:~$ dcdc li ⇒ {"prompt": false, "rule": "plain"}
+# constructed login:  ⇒ {"prompt": false, "rule": "plain"}
+# constructed 12:30>  ⇒ {"prompt": false, "rule": "plain"}
+# constructed # comment ⇒ {"prompt": false, "rule": "plain"}
+# constructed $ ls ⇒ {"prompt": false, "rule": "plain"}
+# constructed [esp32] >  ⇒ {"prompt": false, "rule": "plain"}
+# constructed []>  ⇒ {"prompt": false, "rule": "plain"}
+# constructed pi@raspberrypi:~  $  ⇒ {"prompt": false, "rule": "plain"}
+# constructed pi@raspberrypi:~ >  ⇒ {"prompt": false, "rule": "plain"}
+# constructed Hello world $  ⇒ {"prompt": false, "rule": "plain"}
+I (56) boot: chip revision: v3.0 ⇒ {"prompt": false, "rule": "esp-idf"}

@@ -1,0 +1,33 @@
+# arduino-serial-plotter-webapp msgAggregatorWorker.test.ts, "labeled" over each delimiter
+label_1:1,label_2:2 ⇒ {"rule": "plain+plotter-labelled", "values": [["label_1", 1, null], ["label_2", 2, null]]}
+label_1:3,label_2:4, ⇒ {"rule": "plain+plotter-labelled", "values": [["label_1", 3, null], ["label_2", 4, null]]}
+label_1:1 label_2:2 ⇒ {"rule": "plain+plotter-labelled", "values": [["label_1", 1, null], ["label_2", 2, null]]}
+label_1:3 label_2:4  ⇒ {"rule": "plain+plotter-labelled", "values": [["label_1", 3, null], ["label_2", 4, null]]}
+label_1:1	label_2:2 ⇒ {"rule": "plain+plotter-labelled", "values": [["label_1", 1, null], ["label_2", 2, null]]}
+# ide-v2-serial-plotter.md: "Variable_1:<n>,Variable_2:<n>"
+# constructed Variable_1:12,Variable_2:-3 ⇒ {"rule": "plain+plotter-labelled", "values": [["Variable_1", 12, null], ["Variable_2", -3, null]]}
+myValue:1234 ⇒ {"rule": "plain+plotter-labelled", "values": [["myValue", 1234, null]]}
+# constructed temp:23.5 ⇒ {"rule": "plain+plotter-labelled", "values": [["temp", 23.5, null]]}
+# constructed x:1 y:-2.5 z:1e3 ⇒ {"rule": "plain+plotter-labelled", "values": [["x", 1, null], ["y", -2.5, null], ["z", 1000, null]]}
+# constructed a:1,b:2,c:3 ⇒ {"rule": "plain+plotter-labelled", "values": [["a", 1, null], ["b", 2, null], ["c", 3, null]]}
+# constructed _raw:1023 ⇒ {"rule": "plain+plotter-labelled", "values": [["_raw", 1023, null]]}
+# constructed sensor-1:0.5 ⇒ {"rule": "plain+plotter-labelled", "values": [["sensor-1", 0.5, null]]}
+# constructed Voltage:3.3, Current:0.25 ⇒ {"rule": "plain+plotter-labelled", "values": [["Voltage", 3.3, null], ["Current", 0.25, null]]}
+# constructed  a:1 b:2 ⇒ {"rule": "plain+plotter-labelled", "values": [["a", 1, null], ["b", 2, null]]}
+# constructed bad:1e999,good:2 ⇒ {"rule": "plain+plotter-labelled", "values": [["good", 2, null]]}
+# constructed I (100) main: x:1,y:2 ⇒ {"rule": "esp-idf+plotter-labelled", "module": "main", "values": [["x", 1, null], ["y", 2, null]]}
+
+12:30 ⇒ {"rule": "plain", "values": []}
+00:00:01 ⇒ {"rule": "plain", "values": []}
+# constructed 12:30:45 ⇒ {"rule": "plain", "values": []}
+# constructed label:abc ⇒ {"rule": "plain", "values": []}
+# constructed label:0x1F ⇒ {"rule": "plain", "values": []}
+# constructed a:1,b ⇒ {"rule": "plain", "values": []}
+# constructed a:1 b: ⇒ {"rule": "plain", "values": []}
+# constructed :5 ⇒ {"rule": "plain", "values": []}
+# constructed a:1;b:2 ⇒ {"rule": "plain", "values": []}
+# constructed 1a:5 ⇒ {"rule": "plain", "values": []}
+# constructed a:5V ⇒ {"rule": "plain", "values": []}
+# constructed a:1:2 ⇒ {"rule": "plain", "values": []}
+# constructed Temp: 23.5 ⇒ {"rule": "plain", "values": []}
+>trajectory:12.3:45.67|xy ⇒ {"rule": "plain", "values": []}

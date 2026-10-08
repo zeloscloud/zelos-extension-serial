@@ -1,0 +1,46 @@
+# esp-idf docs/en/api-reference/system/log.rst and examples/*/README.md
+I (56) boot: chip revision: v3.0 ⇒ {"rule": "esp-idf", "level": "info", "name": "boot", "module": "boot", "device_ns": 56000000, "message": "boot: chip revision: v3.0", "prefixed": true, "values": []}
+I (112500) MyModule: Baud rate error 1.5%. Requested: 115200 baud, actual: 116928 baud ⇒ {"rule": "esp-idf", "module": "MyModule", "device_ns": 112500000000, "values": []}
+W (112500) MyModule: Early log message 1 ⇒ {"rule": "esp-idf", "level": "warn", "module": "MyModule"}
+E (588) SPIFFS: mount failed, -10025 ⇒ {"rule": "esp-idf", "level": "error", "module": "SPIFFS", "device_ns": 588000000, "message": "SPIFFS: mount failed, -10025"}
+E (124) esp_core_dump_flash: Core dump flash config is corrupted! CRC=0x7bd5c66f instead of 0x0 ⇒ {"rule": "esp-idf", "level": "error", "module": "esp_core_dump_flash", "values": []}
+I (599) wifi: wifi driver task: 3ffc08b4, prio:23, stack:3584, core=0 ⇒ {"rule": "esp-idf+kv", "module": "wifi", "message": "wifi: wifi driver task: 3ffc08b4, prio:23, stack:3584, core=0", "values": [["core", 0, null]]}
+I (146929) deep_sleep: Enabling timer wakeup, timeout=1000000us ⇒ {"rule": "esp-idf+kv", "module": "deep_sleep", "device_ns": 146929000000, "values": [["timeout", 1000000, "us"]]}
+I (1029) wifi: AP's beacon interval = 102400 us, DTIM period = 3 ⇒ {"rule": "esp-idf", "values": []}
+I (2089) wifi station: got ip:192.168.77.89 ⇒ {"rule": "esp-idf", "name": "wifi station", "module": "wifi station", "message": "wifi station: got ip:192.168.77.89", "values": []}
+I (1324) ADC_ONESHOT: ADC1 Channel[3] Cali Voltage: 559 mV ⇒ {"rule": "esp-idf", "module": "ADC_ONESHOT", "values": []}
+I (1072047) cmd_i2ctools: Write OK ⇒ {"rule": "esp-idf", "module": "cmd_i2ctools", "device_ns": 1072047000000}
+I (1889) wifi: state: auth -> init (200) ⇒ {"rule": "esp-idf", "module": "wifi", "message": "wifi: state: auth -> init (200)"}
+I (759) phy: phy_version: 4180, cb3948e, Sep 12 2019, 16:39:13, 0, 0 ⇒ {"rule": "esp-idf", "module": "phy", "values": []}
+I (617) heap_init: At 3FFAE2A0 len 00001D60 (7 KiB): DRAM ⇒ {"rule": "esp-idf", "module": "heap_init", "message": "heap_init: At 3FFAE2A0 len 00001D60 (7 KiB): DRAM"}
+I (954) MyModule: 54 68 65 20 77 61 79 20 74 6f 20 67 65 74 20 73 ⇒ {"rule": "esp-idf", "values": []}
+I (980) MyModule: The quick brown ⇒ {"rule": "esp-idf", "device_ns": 980000000}
+# constructed D (1234) main: debug detail ⇒ {"rule": "esp-idf", "level": "debug", "module": "main"}
+# constructed V (5) main: verbose detail ⇒ {"rule": "esp-idf", "level": "trace", "device_ns": 5000000}
+# the system-time stamp options print wall-clock time, not uptime
+# constructed I (12:30:01.123) main: hello ⇒ {"rule": "esp-idf", "module": "main", "device_ns": null}
+# constructed I (2024-10-07 12:30:01.123) main: hello ⇒ {"rule": "esp-idf", "module": "main", "device_ns": null}
+# the Wi-Fi library prints its tag with no space after the colon
+I (558) wifi:wifi driver task: 3ffc1e4c, prio:23, stack:6656, core=0 ⇒ {"rule": "esp-idf+kv", "level": "info", "name": "wifi", "module": "wifi", "device_ns": 558000000, "message": "wifi:wifi driver task: 3ffc1e4c, prio:23, stack:6656, core=0", "values": [["core", 0, null]]}
+I (578) wifi:wifi firmware version: 3e5b4e6 ⇒ {"rule": "esp-idf", "module": "wifi", "message": "wifi:wifi firmware version: 3e5b4e6", "values": []}
+I (2048) wifi:state: init -> auth (b0) ⇒ {"rule": "esp-idf", "module": "wifi", "message": "wifi:state: init -> auth (b0)"}
+I (1268) wifi:new:<6,0>, old:<1,0>, ap:<255,255>, sta:<6,0>, prof:1 ⇒ {"rule": "esp-idf", "module": "wifi", "message": "wifi:new:<6,0>, old:<1,0>, ap:<255,255>, sta:<6,0>, prof:1", "values": []}
+W (2345) wifi:Association refused temporarily, comeback time 200 mSec ⇒ {"rule": "esp-idf", "level": "warn", "module": "wifi", "device_ns": 2345000000}
+# constructed I (56) boot:x ⇒ {"rule": "esp-idf", "module": "boot", "message": "boot:x"}
+# bootloader esp_image_format.c: "segment %d: paddr=%08x vaddr=%08x size=%05xh (%6d) %s"
+I (96) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=0a3ech ( 41964) map ⇒ {"rule": "esp-idf", "module": "esp_image", "values": []}
+I (120) esp_image: segment 1: paddr=0001a414 vaddr=3ffb0000 size=0213ch (  8508) load ⇒ {"rule": "esp-idf", "values": []}
+I (124) esp_image: segment 2: paddr=0001c558 vaddr=40080000 size=03ac0h ( 15040) load ⇒ {"rule": "esp-idf", "values": []}
+I (132) esp_image: segment 3: paddr=00020020 vaddr=400d0020 size=1497ch ( 85372) map ⇒ {"rule": "esp-idf", "values": []}
+
+# ESP_DRAM_LOGx prints no stamp; log.rst shows a stamp with no tag
+E TAG_IN_DRAM: DRAM log message 2 ⇒ {"rule": "plain", "level": "info", "module": null}
+I (56): Log message ⇒ {"rule": "plain"}
+rst:0xc (RTC_SW_CPU_RST),boot:0x18 (SPI_FAST_FLASH_BOOT) ⇒ {"rule": "plain", "values": []}
+# constructed X (56) boot: x ⇒ {"rule": "plain"}
+# constructed I(56) boot: x ⇒ {"rule": "plain"}
+# constructed I (56)boot: x ⇒ {"rule": "plain"}
+# constructed I (abc) boot: x ⇒ {"rule": "plain"}
+# constructed i (56) boot: x ⇒ {"rule": "plain"}
+# constructed E (588) SPIFFS mount failed ⇒ {"rule": "plain"}
+[ 1065][E][sd_diskio.cpp:807] sdcard_mount(): f_mount failed: (3) The physical drive cannot work ⇒ {"rule": "arduino-esp32"}

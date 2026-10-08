@@ -1,0 +1,42 @@
+# kernel boot logs in u-boot doc/ and buildroot board/*/readme.txt; printk.c print_time(): "[%5lu.%06lu]"
+[    0.000000] Booting Linux on physical CPU 0x0 ⇒ {"rule": "linux", "level": "info", "name": "kernel", "module": "kernel", "device_ns": 0, "message": "Booting Linux on physical CPU 0x0", "prefixed": true, "values": []}
+[    0.000000] Linux version 6.1.47-09019-g0584b09ad862-dirty ⇒ {"rule": "linux", "values": []}
+[    0.000000] Machine model: Texas Instruments AM625 SK ⇒ {"rule": "linux", "message": "Machine model: Texas Instruments AM625 SK"}
+[    0.000000] Kernel command line: console=ttyS2,115200n8 root=/dev/mmcblk1p2 rw rootfstype=ext4 rootwait ⇒ {"rule": "linux", "values": []}
+[    0.000000] SBI implementation ID=0x1 Version=0x10002 ⇒ {"rule": "linux", "values": []}
+[    0.000000] NR_IRQS: 64, nr_irqs: 64, preallocated irqs: 0 ⇒ {"rule": "linux", "values": []}
+[    0.000001] sched_clock: 64 bits at 7MHz, resolution 128ns, wraps every 4398046511054ns ⇒ {"rule": "linux", "device_ns": 1000, "values": []}
+[    0.008178] Calibrating delay loop (skipped), value calculated using timer frequency.. 15.60 BogoMIPS (lpj=31200) ⇒ {"rule": "linux+kv", "device_ns": 8178000, "values": [["lpj", 31200, null]]}
+[    0.018251] pid_max: default: 4096 minimum: 301 ⇒ {"rule": "linux", "device_ns": 18251000, "values": []}
+[    0.070401] clocksource: jiffies: mask: 0xffffffff max_cycles: 0xffffffff, max_idle_ns: 7645041785100000 ns ⇒ {"rule": "linux", "values": []}
+[    0.130245] workingset: timestamp_bits=62 max_order=11 bucket_order=0 ⇒ {"rule": "linux+kv", "name": "kernel", "module": "kernel", "device_ns": 130245000, "values": [["timestamp_bits", 62, null], ["max_order", 11, null], ["bucket_order", 0, null]]}
+[    0.232253] 38000000.serial: ttySIF0 at MMIO 0x38000000 (irq = 1, base_baud = 115200) is a SiFive UART v0 ⇒ {"rule": "linux", "values": []}
+[    0.241202] printk: console [ttySIF0] enabled ⇒ {"rule": "linux", "device_ns": 241202000}
+[    0.287520] Run /init as init process ⇒ {"rule": "linux", "message": "Run /init as init process"}
+[    0.353347] Freeing unused kernel memory: 88K ⇒ {"rule": "linux", "device_ns": 353347000, "values": []}
+[  0.000000] Booting Linux on physical CPU 0x0000000000 [0x410fd034] ⇒ {"rule": "linux", "device_ns": 0}
+# linux Documentation/admin-guide/bug-hunting.rst
+[   68.387301] RIP: 0010:test_module_init+0x5/0xffa [test_module] ⇒ {"rule": "linux", "device_ns": 68387301000, "message": "RIP: 0010:test_module_init+0x5/0xffa [test_module]"}
+# constructed [123456.000001] uptime of more than a day ⇒ {"rule": "linux", "device_ns": 123456000001000}
+# constructed [    2.500000] <wrn>no space ⇒ {"rule": "linux", "name": "kernel", "message": "<wrn>no space"}
+# constructed [    2.500000] <6>usb 1-1: new device ⇒ {"rule": "linux", "module": "kernel"}
+# printk.c print_caller() with CONFIG_PRINTK_CALLER: "[%6s]" of T<pid> or C<cpu>
+[    0.000000][    T0] Booting Linux on physical CPU 0x0 ⇒ {"rule": "linux", "module": "kernel", "device_ns": 0, "message": "[    T0] Booting Linux on physical CPU 0x0"}
+[    1.234567][    C1] rcu: INFO: rcu_sched self-detected stall on CPU ⇒ {"rule": "linux", "device_ns": 1234567000, "message": "[    C1] rcu: INFO: rcu_sched self-detected stall on CPU"}
+[  123.456789][  T123] usb 1-1: new high-speed USB device number 2 using ehci-platform ⇒ {"rule": "linux", "module": "kernel", "device_ns": 123456789000, "values": []}
+# constructed [    0.000000][T1234567] long caller id ⇒ {"rule": "linux", "message": "[T1234567] long caller id"}
+
+# constructed [    0.00000] short fraction ⇒ {"rule": "plain", "device_ns": null, "name": ""}
+# constructed [    0.000000]no space ⇒ {"rule": "plain"}
+# constructed [    1.2345678] long fraction ⇒ {"rule": "plain"}
+# constructed <6>[    0.000000] Booting Linux on physical CPU 0x0 ⇒ {"rule": "plain"}
+# constructed [    0,000000] comma ⇒ {"rule": "plain"}
+# constructed [   -1.000000] negative ⇒ {"rule": "plain"}
+# constructed [    .000000] no seconds ⇒ {"rule": "plain"}
+# constructed [	0.000000] tab ⇒ {"rule": "plain"}
+[2026-06-05 12:33:38] --- 1 messages dropped --- ⇒ {"rule": "plain"}
+# constructed [4294967297.000000] <inf> domain/src: test ⇒ {"rule": "zephyr", "name": "src"}
+# constructed [    1.106051] <wrn> main: x ⇒ {"rule": "zephyr", "level": "warn"}
+[ 1065][E][sd_diskio.cpp:807] sdcard_mount(): f_mount failed: (3) The physical drive cannot work ⇒ {"rule": "arduino-esp32"}
+[00:00:00.106,051] <inf> sample_module: log in test_module 11 ⇒ {"rule": "zephyr"}
+# constructed [    0.000000][    X0] unknown caller ⇒ {"rule": "plain"}
