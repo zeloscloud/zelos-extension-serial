@@ -4,7 +4,7 @@
 
 - [Zelos CLI](https://docs.zeloscloud.io/latest/getting-started/install-cli/) 0.1.10 or later
 - Python 3.11
-- [uv](https://docs.astral.sh/uv/)
+- [uv](https://docs.astral.sh/uv/) 0.9.5 or later
 - [just](https://github.com/casey/just)
 
 The Zelos guide to [developing extensions](https://docs.zeloscloud.io/latest/sdk/how-to/develop-extensions/) covers the SDK, and [Package and Publish Extensions](https://docs.zeloscloud.io/latest/sdk/how-to/package-extensions/) covers the archive and the marketplace.
@@ -13,7 +13,7 @@ The Zelos guide to [developing extensions](https://docs.zeloscloud.io/latest/sdk
 
 | Command        | Description                                              |
 | -------------- | -------------------------------------------------------- |
-| `just install` | Install dependencies                                     |
+| `just install` | Install dependencies and the pre-commit hooks            |
 | `just fmt`     | Format and fix lint with ruff                            |
 | `just check`   | Format check, lint, pyright and pytest: the merge gate   |
 | `just test`    | Run tests                                                |

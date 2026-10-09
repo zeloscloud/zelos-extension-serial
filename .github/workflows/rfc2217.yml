@@ -75,7 +75,7 @@ jobs:
           (ser2net -v || true) | grep -F "ser2net version ${{ matrix.ser2net }}"
 
       - name: Install dependencies
-        run: uv sync --locked --extra dev
+        run: uv sync --locked
 
       - name: Test against ser2net
         env:

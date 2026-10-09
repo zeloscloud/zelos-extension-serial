@@ -3,13 +3,18 @@ set shell := ["bash", "-eu", "-o", "pipefail", "-c"]
 default:
     @just --list
 
-# Install dependencies
+# Install dependencies and the pre-commit hooks
 install:
-    uv sync --extra dev
+    uv sync
+    if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then \
+        uv run pre-commit install; \
+    else \
+        echo "Not a git repository: skipped the pre-commit hooks. Run git init, then just install."; \
+    fi
 
-# Install the locked dependencies (CI)
+# Install the locked dependencies, without pre-commit hooks (CI)
 ci-install:
-    uv sync --locked --extra dev
+    uv sync --locked
 
 # Format and fix lint
 fmt:
