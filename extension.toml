@@ -7,7 +7,7 @@ homepage = "https://github.com/zeloscloud/zelos-extension-serial"
 keywords = ["serial", "uart", "console", "rs232", "tcp", "rfc2217", "zephyr", "esp32", "arduino", "log"]
 categories = ["Embedded", "Industrial", "IoT", "Test & Measurement"]
 
-icon = "assets/icon.svg"
+icon = "assets/icon.png"
 readme = "README.md"
 
 # The Port picker (the action-choices widget) needs 26.0.8; older apps cannot render this config
