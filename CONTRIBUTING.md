@@ -24,6 +24,31 @@ The Zelos guide to [developing extensions](https://docs.zeloscloud.io/latest/sdk
 CI runs `just check` on Linux, macOS and Windows for every pull request and every push to `main`.
 The RFC 2217 workflow runs the RFC 2217 tests against ser2net 4.3.4, 4.6.0 and 4.6.7 on the same events.
 
+The throughput test checks for zero loss and runs on Linux only:
+
+```bash
+uv run pytest -m perf
+```
+
+## RFC 2217 tests against ser2net
+
+The RFC 2217 tests in `tests/test_rfc2217.py` also run against a real ser2net.
+ser2net serves one end of a pseudo-terminal pair as RFC 2217, and a writer prints `L<8 digits>` lines into the other end about every 5 ms.
+`.github/workflows/rfc2217.yml` builds that setup.
+The tests skip when these are unset:
+
+| Variable | Value |
+|---|---|
+| `SER2NET_HOST`, `SER2NET_PORT` | Where ser2net accepts RFC 2217 |
+| `SER2NET_DEVICE` | The pseudo-terminal ser2net serves |
+| `SER2NET_PEER` | The other end, where the writer prints |
+| `SER2NET_KILL` | A command that stops ser2net, such as `pkill -x ser2net` |
+
+```bash
+SER2NET_HOST=127.0.0.1 SER2NET_PORT=2217 SER2NET_DEVICE=/tmp/devA SER2NET_PEER=/tmp/devB \
+  SER2NET_KILL='pkill -x ser2net' uv run pytest tests/test_rfc2217.py -v
+```
+
 ## Local run
 
 ```bash
