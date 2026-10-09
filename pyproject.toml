@@ -27,18 +27,22 @@ Repository = "https://github.com/zeloscloud/zelos-extension-serial"
 Issues = "https://github.com/zeloscloud/zelos-extension-serial/issues"
 Documentation = "https://docs.zeloscloud.io/latest/sdk/how-to/develop-extensions/"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
-    "pytest>=8.4.2",
+    "pytest>=9.1.1",
     "hypothesis>=6",
-    "ruff>=0.14.2",
+    "ruff>=0.16.10",
     "pyright>=1.1.400",
     "pyarrow>=14",
+    "pre-commit>=4.6.2",
 ]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv]
+required-version = ">=0.9.5"
 
 [tool.hatch.build.targets.wheel]
 packages = ["zelos_extension_serial"]
