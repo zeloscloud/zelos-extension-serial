@@ -1,11 +1,13 @@
 name = "Serial"
 version = "0.1.0"
-description = "Record serial consoles: every line becomes a log event, every printed value a signal. Serial ports, TCP and RFC 2217."
+description = "Record device consoles over UART, USB serial, TCP or RFC 2217: every line becomes a log event with its level and module, and every printed value a signal."
 author = "Zelos"
 repository = "https://github.com/zeloscloud/zelos-extension-serial"
 homepage = "https://github.com/zeloscloud/zelos-extension-serial"
-keywords = ["serial", "uart", "console", "rs232", "tcp", "rfc2217", "zephyr", "esp32", "arduino", "log"]
-categories = ["Embedded", "Industrial", "IoT", "Test & Measurement"]
+# The app's search and its AI read these, with the name and description; the page shows the first
+# three categories.
+keywords = ["serial", "uart", "usb serial", "serial port", "com port", "tty", "console", "terminal", "log", "plotter", "rs232", "rs485", "rfc2217", "ser2net", "zephyr", "esp32", "esp-idf", "arduino", "stm32", "teleplot"]
+categories = ["Embedded", "Diagnostics", "IoT", "Industrial"]
 
 icon = "assets/icon.png"
 readme = "README.md"
