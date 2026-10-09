@@ -1,19 +1,55 @@
-# Zelos extension for serial consoles
+# Serial
 
-Serial records what a device prints on its console: every line becomes a log event, and every printed value becomes a signal.
-It reads local serial ports, raw TCP ports and RFC 2217 ports, on Linux, macOS and Windows.
+Record what a device prints on its serial console: every line in the Log panel, every printed value a signal you can plot.
+
+- 🔎 **The whole console, searchable**: each line keeps the device's time stamp, level and module.
+- 📈 **Values without a decoder**: `rail=13.8V in=4.50A` becomes `rail` in V and `in` in A.
+- 🧩 **Common formats built in**: Zephyr, ESP-IDF, Arduino on ESP32 and Linux kernel logs, plus Teleplot and the Arduino plotter.
+- ⏱️ **The device's clock**: a 20 ms loop plots 20 ms apart, not when USB delivered the line.
+- 💬 **Commands from the app**: send text, run a shell command and read its reply, or pulse a reset line.
+- ⚡ **Room for your flasher**: release the port before a flash and take it back after, from a build hook.
+- 🔌 **Any port**: USB serial, COM and tty ports, raw TCP and RFC 2217, on Linux, macOS and Windows.
+
+[![Serial recording a board's console in Zelos: log lines stream in with their levels while the board's current is plotted, then a shell command lowers the limit and the plot follows.](assets/readme/hero.avif)](assets/readme/hero.mp4)
+
+![The Log panel searched for bms: six warnings, five seconds apart, each reading cell imbalance and a value in mV, out of thousands of status lines.](assets/readme/warnings.png)
+
+## What it reads
+
+| | |
+|---|---|
+| **Connections** | USB serial and other serial ports (COM, `/dev/tty*`, `usb:<vid>:<pid>:<serial>`), raw TCP, RFC 2217, and a built-in demo board |
+| **Log prefixes** | Zephyr, ESP-IDF, Arduino on ESP32, the Linux kernel, and a level word such as `ERROR:` or `[WRN]` |
+| **Values** | `key=value`, Teleplot, the Arduino plotter (labelled and bare), and a repeated `label: value` |
+| **Runs on** | Linux, macOS and Windows, with Zelos 26.0.8 or later |
+
+## One line, recorded
+
+A Zephyr board prints:
+
+```text
+[00:00:12.340,000] <inf> dcdc: rail=13.73V in=4.50A limit=4.5A temp=37.2C
+```
+
+Serial records it twice, both at the board's 12.340 s:
+
+| Event | What lands |
+|---|---|
+| `Serial/<port>/log` | A row at level `info`, name `dcdc`, message `dcdc: rail=13.73V in=4.50A limit=4.5A temp=37.2C` |
+| `Serial/<port>/dcdc` | The signals `rail` = 13.73 V, `in` = 4.5 A, `limit` = 4.5 A and `temp` = 37.2 C |
+
+![The signal tree with Serial, demo and dcdc open to in, limit, rail and temp, beside the log rows and a plot of in and limit stepping from 4.5 A to 2.0 A.](assets/readme/overview.png)
 
 ## Quick start
 
-1. **Install** Serial from the extension marketplace in the Zelos App (Zelos 26.0.8 or later).
-2. **Configure** a port: pick a device in the **Port** list, or press **Auto-configure** to add one port for each USB serial device that no port uses yet.
-3. **Start** the extension. Lines appear in the Log panel, and values appear as signals.
-
-Configure Serial from a Zelos App 26.0.8 or later: an app 26.0.7 or older cannot show its config form.
+1. **Configure** a port: pick a device in the **Port** list, or press **Auto-configure** to add one port for each USB serial device that no port uses yet.
+2. **Start** Serial. Lines appear in the Log panel, and values appear as signals.
 
 No hardware? Set **Connection** to **Demo board**, or press Auto-configure with no port and no device.
-The demo device prints the console of a Zephyr board: a power converter status line every 20 ms and a battery warning every 5 s.
+The demo board prints like a Zephyr board: a power converter's status every 20 ms and a battery warning every 5 s.
 It answers the shell commands `dcdc limit get` and `dcdc limit set <amps>`.
+
+Configure Serial from Zelos 26.0.8 or later: an older app cannot show its config form.
 
 ## What it records
 

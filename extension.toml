@@ -36,4 +36,5 @@ grace_seconds = 5
 # The packager adds extension.toml, the readme, icon and config schema, pyproject.toml, uv.lock and
 # the generated actions.json; everything else is named here.
 [package]
-paths = ["main.py", "zelos_extension_serial", "LICENSE"]
+# assets/readme: an installed copy shows the README's pictures from the package, not from GitHub.
+paths = ["main.py", "zelos_extension_serial", "LICENSE", "assets/readme"]
