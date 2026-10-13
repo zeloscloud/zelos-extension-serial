@@ -346,6 +346,43 @@ def test_a_host_lookup_that_hangs_is_unresolved_within_the_connect_timeout(
     assert classify(caught.value) == "unresolved"
 
 
+# IOSSIOSPEED is macOS: under a platform check, so pyright on Linux and Windows skips it too.
+if sys.platform == "darwin":
+    import fcntl
+
+    @pytest.mark.parametrize(
+        ("error", "fault"),
+        [(errno.EINVAL, "config"), (errno.ENOTTY, None), (errno.ENXIO, "other")],
+        ids=["refused", "pseudo-terminal", "unplugged"],
+    )
+    def test_a_baud_the_macos_driver_refuses_is_unsupported(
+        monkeypatch: pytest.MonkeyPatch, error: int, fault: Fault | None
+    ) -> None:
+        from serialx.platforms.serial_darwin import IOSSIOSPEED
+
+        # 250000 has no termios constant, so it is set with IOSSIOSPEED after the open.
+        real = fcntl.ioctl
+
+        def ioctl(fd: int, request: int, *args: Any) -> Any:
+            if request == IOSSIOSPEED:
+                raise OSError(error, os.strerror(error))
+            return real(fd, request, *args)
+
+        monkeypatch.setattr(fcntl, "ioctl", ioctl)
+        leader, follower = os.openpty()
+        cfg = dataclasses.replace(SERIAL, port=os.ttyname(follower), baud=250000)
+        try:
+            if fault is None:
+                open_transport(cfg).close()
+                return
+            with pytest.raises(OSError if fault == "other" else UnsupportedSetting) as caught:
+                open_transport(cfg)
+            assert classify(caught.value) == fault
+        finally:
+            os.close(leader)
+            os.close(follower)
+
+
 @pytest.mark.parametrize("host", ["bench..local", "x" * 64 + ".local", ".local"])
 def test_a_malformed_host_name_is_unresolved(host: str) -> None:
     # The name fails its IDNA encoding with UnicodeError, a ValueError, before any lookup.

@@ -18,6 +18,32 @@ from .demo import DemoDevice
 from .discovery import PortNotFound, resolve
 from .rfc2217 import FixedRFC2217Serial, NoRfc2217
 
+if sys.platform == "darwin":
+    import array
+    import fcntl
+
+    from serialx.platforms.serial_darwin import IOSSIOSPEED, DarwinSerial
+
+    class FixedDarwinSerial(DarwinSerial):
+        """serialx's macOS port, which ran at its 115200 fallback when the driver refused a baud
+        that termios has no constant for, such as 250000, and reported nothing."""
+
+        def _set_non_posix_baudrate(self, baudrate: int) -> None:
+            assert self._fileno is not None
+            try:
+                fcntl.ioctl(self._fileno, IOSSIOSPEED, array.array("i", [baudrate]))
+            except OSError as e:
+                # EINVAL is the driver refusing the baud. A pseudo-terminal has no baud to set
+                # (ENOTTY), and any other error, such as an unplug, is a failed open to retry.
+                if e.errno == errno.EINVAL:
+                    raise UnsupportedSetting(f"baud {baudrate} is not supported") from e
+                if e.errno != errno.ENOTTY:
+                    raise
+
+    _FIXED: dict[type, type] = {DarwinSerial: FixedDarwinSerial}
+else:
+    _FIXED = {}
+
 if sys.platform != "win32":
     import fcntl
     import termios
@@ -163,7 +189,8 @@ def open_transport(cfg: PortConfig) -> Transport:
     assert cfg.port is not None
     where = resolve(cfg.port)
     # serialx types Serial as its abstract base; at run time it is this platform's class.
-    port = serialx.Serial(  # pyright: ignore[reportAbstractUsage]
+    serial_class = _FIXED.get(serialx.Serial, serialx.Serial)
+    port = serial_class(
         where,
         **framing(cfg),
         exclusive=True,
