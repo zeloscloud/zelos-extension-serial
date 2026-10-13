@@ -244,7 +244,9 @@ The built-in USB CDC driver lists a device as `USB Serial Device (COM4)`, made b
 
 A serial number shorter than 4 characters is not used: Windows makes up a short one for a device that has none.
 For such a device, the list stores the path.
-When two connected devices share one ID, the extension uses the first by path and logs a warning.
+Two connected devices can share one ID: many boards with a CP2102 bridge report serial `0001`.
+The list then stores each one's device node, such as `/dev/ttyUSB0`, and Auto-configure adds each one by it; a `/dev/serial/by-id` name built from the shared serial would name only one of them.
+A configured ID that two connected devices share opens the first by path, and the extension logs a warning.
 
 ## Connections
 

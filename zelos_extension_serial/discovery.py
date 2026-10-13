@@ -1,8 +1,10 @@
 """Serial devices on this machine."""
 
+import dataclasses
 import logging
 import re
 import sys
+from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -30,6 +32,10 @@ class PortInfo:
     serial: str | None
     manufacturer: str | None
     product: str | None
+    # Another connected device has the same ID, as many CP2102 bridges report serial `0001`.
+    id_shared: bool = False
+    # The first device by path with this ID: the one resolve() opens for it.
+    id_first: bool = True
 
     @property
     def device_id(self) -> str | None:
@@ -41,7 +47,14 @@ class PortInfo:
 
     @property
     def choice(self) -> str:
-        """What the Port field stores for this device: its device ID, else its path."""
+        """What the Port field stores for this device: its device ID, else its path.
+
+        A shared ID names whichever of its devices is first by path, so it gives the device node:
+        on Linux, their /dev/serial/by-id names, made from the serial, are one link that points to
+        whichever device appeared last.
+        """
+        if self.id_shared:
+            return self.resolved
         return self.device_id or self.path
 
     def has_path(self, path: str) -> bool:
@@ -50,7 +63,7 @@ class PortInfo:
 
     def named_by(self, port_field: str) -> bool:
         """Whether a Port field names this device, by its device ID or one of its paths."""
-        return port_field == self.device_id or self.has_path(port_field)
+        return (self.id_first and port_field == self.device_id) or self.has_path(port_field)
 
 
 class PortNotFound(Exception):
@@ -61,8 +74,8 @@ class PortNotFound(Exception):
 
 
 def list_ports() -> list[PortInfo]:
-    """Every serial device on this machine, sorted by path."""
-    ports = [
+    """Every serial device on this machine, sorted by path, with shared IDs marked."""
+    listed = [
         PortInfo(
             p.device,
             p.resolved_device,
@@ -74,7 +87,16 @@ def list_ports() -> list[PortInfo]:
         )
         for p in serialx.list_serial_ports()
     ]
-    return sorted(ports, key=lambda p: p.path)
+    listed.sort(key=lambda p: p.path)
+    counts = Counter(p.device_id for p in listed if p.device_id)
+    seen: set[str] = set()
+    ports = []
+    for p in listed:
+        if (device_id := p.device_id) is not None and counts[device_id] > 1:
+            p = dataclasses.replace(p, id_shared=True, id_first=device_id not in seen)
+            seen.add(device_id)
+        ports.append(p)
+    return ports
 
 
 def resolve(port_field: str) -> str:
