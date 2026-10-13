@@ -226,6 +226,19 @@ def test_an_unanswered_wait_ends_at_the_deadline_while_the_device_prints(
     port.close()
 
 
+def test_the_open_deadline_ends_the_reply_waits_before_the_connect_timeout(
+    ser2net: Callable[..., FakeSer2net],
+) -> None:
+    # Acquire Port's budget: the waits together end by it, not each at the 2 s timeout.
+    port = FixedRFC2217Serial(ser2net(unacked=SET_BAUDRATE).url, connect_timeout=2.0)
+    port.open_deadline = time.monotonic() + 0.3
+    started = time.monotonic()
+    with pytest.raises(SettingsNotAcked):
+        port.open()
+    assert time.monotonic() - started < 0.8
+    port.close()
+
+
 @pytest.mark.parametrize(
     "server",
     [{"telnet": False}, {"com_port": "refuse"}, {"com_port": "ignore"}],

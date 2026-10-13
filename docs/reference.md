@@ -355,10 +355,7 @@ A caller that stops waiting early, such as a CLI with a shorter timeout, does no
 Acquire Port waits until the port opens, for up to 14 s.
 It fails at once on a permission error or an unsupported setting.
 After 14 s it fails with the port's health sentence, and the extension keeps trying to open the port.
-It also fails with the health sentence before an open that would end past the 14 s, judged by how long the port's last open took, so the caller gets the reason.
-An open slower than the port's last one can still end past the wait.
-Examples are the first open of a network port whose host has 7 or more unreachable addresses, at 2 s each, and a host that refuses connections and then stops answering during the wait.
-Acquire Port then fails with `<port> did not answer within 14.5 s`, and the extension keeps trying to open the port.
+A network port's open gets the time left of the 14 s: its host's lookup, each address it tries and an RFC 2217 server's replies all end by then, so a slow or unreachable host cannot hold the answer past it.
 
 ### Get State
 

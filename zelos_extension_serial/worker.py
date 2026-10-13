@@ -28,7 +28,15 @@ from .formats import (
     parse,
 )
 from .lines import Line, LineSplitter
-from .transport import Fault, Transport, WriteTimeout, address, classify, open_transport
+from .transport import (
+    Fault,
+    Opener,
+    Transport,
+    WriteTimeout,
+    address,
+    classify,
+    open_transport,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +114,7 @@ class PortWorker(threading.Thread):
         cfg: PortConfig,
         emitter: Emitter,
         settings: Settings,
-        open: Callable[[PortConfig], Transport] = open_transport,
+        open: Opener = open_transport,
         # Not monotonic_ns: on Windows, Python 3.11's ticks every 15.6 ms.
         now: Callable[[], int] = time.perf_counter_ns,
     ) -> None:
@@ -160,7 +168,6 @@ class PortWorker(threading.Thread):
         self._acquiring: _Future | None = None
         self._acquire_by_ns = 0
         # How long the last open took: a host's addresses each wait out the connect timeout.
-        self._open_ns = 0
         self._lines: deque[str] = deque(maxlen=_KEPT)
         self._chunks: deque[bytes] = deque(maxlen=_KEPT)
         self._sent: deque[tuple[str, int]] = deque(maxlen=_SENT)
@@ -277,31 +284,32 @@ class PortWorker(threading.Thread):
 
     def _connect(self) -> None:
         cfg, port = self._cfg, self._cfg.port
-        start = self._now()
-        # An open blocks the thread: one as slow as the last would settle an acquire only after
-        # its caller stopped waiting, so it settles now with the reason so far.
-        if self._acquiring is not None and start + self._open_ns > self._acquire_by_ns:
-            self._settle_acquire(self._health())
+        # An open blocks the thread, so during Acquire Port it gets the wait that is left: a slow
+        # host then settles the acquire by its deadline, with the reason.
+        budget_s = None
+        if self._acquiring is not None:
+            budget_s = max(0.0, (self._acquire_by_ns - self._now()) / _S)
         try:
-            transport = self._open(cfg)
+            transport = self._open(cfg, budget_s)
         except Exception as e:
-            self._open_ns = self._now() - start
             fault = classify(e)
             if fault == "not_found":
                 # Absence is not a failed open: look again soon, so a replugged device is open
                 # in time for its boot output.
                 self._retry_ns = self._now() + _BACKOFF_MIN_NS
                 self._attempt_failed(fault, str(e))
-                return
-            if fault != "config":
+            elif fault != "config":
                 self._retry_later()
                 self._attempt_failed(fault, str(e))
+            else:
+                self._state, self._fault, self._error = "failed", fault, str(e)
+                logger.error("%s: cannot open %s: %s", cfg.name, self._where, e)
+                self._settle_acquire(self._health())
                 return
-            self._state, self._fault, self._error = "failed", fault, str(e)
-            logger.error("%s: cannot open %s: %s", cfg.name, self._where, e)
-            self._settle_acquire(self._health())
+            # An open that used the rest of the wait settles the acquire now, with its reason.
+            if self._acquiring is not None and self._now() >= self._acquire_by_ns:
+                self._settle_acquire(self._health())
             return
-        self._open_ns = self._now() - start
         # Judged gone later only if present now: Windows may not list a virtual port, such as
         # com0com.
         self._watched = port is not None and self._present(port)

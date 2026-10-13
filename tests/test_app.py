@@ -42,7 +42,7 @@ def test_lines_from_a_tcp_port_reach_its_log(trace_file: Recording, config_file)
     stop = threading.Event()
     threading.Timer(0.5, stop.set).start()
 
-    app.run(trace_file.source, open=lambda _cfg: transport, stop=stop)
+    app.run(trace_file.source, open=lambda _cfg, budget_s=None: transport, stop=stop)
 
     rows = [row for row in trace_file.events()["dut/log"] if row["name"] != "serial"]
     assert [row["message"] for row in rows] == ["hello", "world"]
@@ -66,7 +66,7 @@ def test_run_fills_the_workers_under_default_names(
     stop = threading.Event()
     stop.set()
 
-    app.run(trace_file.source, open=lambda _cfg: FakeTransport(), stop=stop)
+    app.run(trace_file.source, open=lambda _cfg, budget_s=None: FakeTransport(), stop=stop)
 
     assert sorted(actions.workers) == ["127_0_0_1_4001", "demo", "usb_0403_6001_A50285BI"]
 
@@ -88,7 +88,7 @@ def test_stuck_ports_end_within_one_second_of_stop(
     opening: list[str] = []
     stopped_at = 0.0
 
-    def stuck(cfg: PortConfig) -> Transport:
+    def stuck(cfg: PortConfig, budget_s: float | None = None) -> Transport:
         nonlocal stopped_at
         opening.append(cfg.name)
         if len(opening) == 4:
@@ -167,7 +167,7 @@ def test_run_starts_with_a_default_name_of_long_non_ascii_text(
     stop = threading.Event()
     stop.set()
 
-    app.run(trace_file.source, open=lambda _cfg: FakeTransport(), stop=stop)
+    app.run(trace_file.source, open=lambda _cfg, budget_s=None: FakeTransport(), stop=stop)
 
     (name,) = actions.workers
     assert len(name.encode()) <= 64
@@ -208,7 +208,7 @@ def test_a_failed_action_reaches_the_caller_but_not_the_log(
     runner = threading.Thread(
         target=app.run,
         args=(trace_file.source,),
-        kwargs={"open": lambda _cfg: FakeTransport(), "stop": stop},
+        kwargs={"open": lambda _cfg, budget_s=None: FakeTransport(), "stop": stop},
     )
     runner.start()
     try:

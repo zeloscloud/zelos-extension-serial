@@ -10,7 +10,6 @@ import signal
 import sys
 import threading
 import time
-from collections.abc import Callable
 
 import zelos_sdk
 from zelos_sdk.hooks.logging import TraceLoggingHandler
@@ -19,7 +18,7 @@ from . import ACTION_PREFIX, actions, config
 from .config import ConfigError, PortConfig, Settings
 from .emitter import Emitter
 from .naming import unique_name
-from .transport import Transport, open_transport
+from .transport import Opener, open_transport
 from .worker import PortWorker
 
 logger = logging.getLogger(__name__)
@@ -29,7 +28,7 @@ def run(
     source: zelos_sdk.TraceSource | None = None,
     *,
     settings: Settings | None = None,
-    open: Callable[[PortConfig], Transport] = open_transport,
+    open: Opener = open_transport,
     stop: threading.Event | None = None,
 ) -> None:
     """Run the extension until `stop` is set, or until SIGTERM or SIGINT."""

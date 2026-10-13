@@ -413,6 +413,40 @@ def test_a_link_local_ipv6_host_keeps_its_zone() -> None:
             port.close()
 
 
+class SlowSocket:
+    """A connection that takes its whole connect timeout, then fails."""
+
+    timeouts: list[float] = []
+
+    def __init__(self, url: str, connect_timeout: float, write_timeout: float) -> None:
+        self.connect_timeout = connect_timeout
+
+    def open(self) -> None:
+        SlowSocket.timeouts.append(self.connect_timeout)
+        time.sleep(self.connect_timeout)
+        raise TimeoutError("timed out")
+
+
+@pytest.mark.parametrize(("budget_s", "tried"), [(None, 4), (0.5, 2)])
+def test_a_network_open_ends_within_its_budget(
+    lookups: dict[str, Any], monkeypatch: pytest.MonkeyPatch, budget_s: float | None, tried: int
+) -> None:
+    monkeypatch.setattr(transport, "CONNECT_TIMEOUT_S", 0.3)
+    monkeypatch.setattr(transport, "SocketSerial", SlowSocket)
+    SlowSocket.timeouts = []
+    lookups["bench.local"] = [(socket.AF_INET, f"192.0.2.{n}") for n in range(1, 5)]
+    started = time.monotonic()
+    with pytest.raises(TimeoutError):
+        transport._open_network(port_config(host="bench.local", tcp_port=4001), budget_s)
+    elapsed = time.monotonic() - started
+    # Each address gets the connect timeout, or what is left of the budget if that is less.
+    assert len(SlowSocket.timeouts) == tried
+    assert SlowSocket.timeouts[0] == pytest.approx(0.3)
+    if budget_s is not None:
+        assert SlowSocket.timeouts[1] == pytest.approx(0.2, abs=0.05)
+        assert elapsed < budget_s + 0.1
+
+
 def test_an_unknown_host_is_unresolved(lookups: dict[str, Any]) -> None:
     lookups["nowhere.invalid"] = socket.gaierror(socket.EAI_NONAME, "not known")
     with pytest.raises(UnresolvedHost, match="^cannot resolve nowhere.invalid$") as caught:

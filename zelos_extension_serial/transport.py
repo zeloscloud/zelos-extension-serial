@@ -180,12 +180,22 @@ def framing(cfg: PortConfig) -> dict[str, Any]:
     }
 
 
-def open_transport(cfg: PortConfig) -> Transport:
-    """Open the port `cfg` describes."""
+class Opener(Protocol):
+    """Opens a port; `open_transport`, or a test's stand-in for it."""
+
+    def __call__(self, cfg: PortConfig, /, budget_s: float | None = None) -> Transport: ...
+
+
+def open_transport(cfg: PortConfig, budget_s: float | None = None) -> Transport:
+    """Open the port `cfg` describes.
+
+    A network port gives up once `budget_s` has passed: Acquire Port's wait is the budget, so
+    one slow host cannot hold the port's thread past it. A serial port opens at once or fails.
+    """
     if cfg.connection == "demo":
         return DemoDevice()
     if cfg.connection != "serial":
-        return _open_network(cfg)
+        return _open_network(cfg, budget_s)
     assert cfg.port is not None
     where = resolve(cfg.port)
     # serialx types Serial as its abstract base; at run time it is this platform's class.
@@ -210,23 +220,39 @@ def open_transport(cfg: PortConfig) -> Transport:
     return SerialxTransport(port, where, seconds_per_byte=bits / cfg.baud, exclusive=True)
 
 
-def _open_network(cfg: PortConfig) -> Transport:
-    """Connect to the first address of the host that answers, as socket.create_connection does."""
+def _open_network(cfg: PortConfig, budget_s: float | None = None) -> Transport:
+    """Connect to the first address of the host that answers, as socket.create_connection does.
+
+    Each step waits CONNECT_TIMEOUT_S at most, and no step outlasts the budget.
+    """
     assert cfg.host is not None
-    last: OSError | None = None
-    for ip in _addresses(cfg.host, cfg.tcp_port):
+    deadline = None if budget_s is None else time.monotonic() + budget_s
+
+    def wait_s() -> float:
+        if deadline is None:
+            return CONNECT_TIMEOUT_S
+        return min(CONNECT_TIMEOUT_S, deadline - time.monotonic())
+
+    last: Exception | None = None
+    for ip in _addresses(cfg.host, cfg.tcp_port, wait_s()):
+        timeout = wait_s()
+        if timeout <= 0:
+            break
         url = f"{_url_host(ip)}:{cfg.tcp_port}"
         if cfg.connection == "rfc2217":
             # Opening sends no DTR or RTS: they stay as the server has them.
-            port: SocketSerial = FixedRFC2217Serial(
+            rfc2217 = FixedRFC2217Serial(
                 f"rfc2217://{url}",
                 **framing(cfg),
-                connect_timeout=CONNECT_TIMEOUT_S,
+                connect_timeout=timeout,
                 write_timeout=WRITE_TIMEOUT_S,
             )
+            # Its negotiation waits for several replies; together they end by the deadline too.
+            rfc2217.open_deadline = deadline
+            port: SocketSerial = rfc2217
         else:
             port = SocketSerial(
-                f"socket://{url}", connect_timeout=CONNECT_TIMEOUT_S, write_timeout=WRITE_TIMEOUT_S
+                f"socket://{url}", connect_timeout=timeout, write_timeout=WRITE_TIMEOUT_S
             )
         try:
             port.open()
@@ -237,12 +263,14 @@ def _open_network(cfg: PortConfig) -> Transport:
         _keep_alive(port._socket)
         # The host as typed, not the address it resolved to.
         return SerialxTransport(port, address(cfg))
-    assert last is not None, "getaddrinfo returns an address or raises"
+    if last is None:
+        # The budget ran out before any address was tried.
+        raise TimeoutError(f"no address of {cfg.host} answered in time")
     raise last
 
 
-def _addresses(host: str, port: int | None) -> list[str]:
-    """The addresses of `host`, looked up within CONNECT_TIMEOUT_S."""
+def _addresses(host: str, port: int | None, timeout_s: float = CONNECT_TIMEOUT_S) -> list[str]:
+    """The addresses of `host`, looked up within `timeout_s`."""
     # getaddrinfo cannot be interrupted, and a .local name can block it for 5 s, so it runs on its
     # own thread; one that outlives the wait ends on its own.
     found: Future[list[Any]] = Future()
@@ -255,7 +283,7 @@ def _addresses(host: str, port: int | None) -> list[str]:
 
     threading.Thread(target=look_up, name=f"look up {host}", daemon=True).start()
     try:
-        infos = found.result(timeout=CONNECT_TIMEOUT_S)
+        infos = found.result(timeout=max(timeout_s, 0.0))
     # A malformed name, such as bench..local, fails its IDNA encoding with UnicodeError.
     except (TimeoutError, OSError, UnicodeError) as e:
         raise UnresolvedHost(host) from e

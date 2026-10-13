@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Answer Acquire Port within its 14 s wait however slow a network host gets. A network port's open now gets the time left of the wait, so an open slower than the last one no longer ended past it with `<port> did not answer within 14.5 s`.
+
 ### Changed
 
 - Return lines from Sample as the log has them, without prompts or the echo of sent text. A Zephyr shell redraws its prompt around every log line, so the last lines were often all `uart:~$`. Sample with `hex` still returns the raw reads.
