@@ -229,9 +229,18 @@ def _addresses(host: str, port: int | None) -> list[str]:
     threading.Thread(target=look_up, name=f"look up {host}", daemon=True).start()
     try:
         infos = found.result(timeout=CONNECT_TIMEOUT_S)
-    except (TimeoutError, OSError) as e:
+    # A malformed name, such as bench..local, fails its IDNA encoding with UnicodeError.
+    except (TimeoutError, OSError, UnicodeError) as e:
         raise UnresolvedHost(host) from e
-    return list(dict.fromkeys(str(info[4][0]) for info in infos))
+    return list(dict.fromkeys(_ip(info) for info in infos))
+
+
+def _ip(info: tuple[Any, ...]) -> str:
+    """The address of one getaddrinfo result, with the zone a link-local IPv6 address needs."""
+    family, sockaddr = info[0], info[4]
+    if family == socket.AF_INET6 and sockaddr[3]:
+        return f"{sockaddr[0]}%{sockaddr[3]}"
+    return str(sockaddr[0])
 
 
 def _keep_alive(sock: socket.socket) -> None:

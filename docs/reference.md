@@ -268,6 +268,7 @@ When the extension cannot list the devices to check whether a port is connected,
 ### Network ports and keepalive
 
 A network port looks up its host for at most 2 s, then tries each address the lookup returns for at most 2 s.
+A link-local IPv6 address keeps its zone, such as `fe80::1%en0`, so a `.local` name that returns only one still connects.
 
 On an open TCP or RFC 2217 connection, the extension turns on TCP keepalive: after 10 s without bytes it sends a probe every 5 s.
 A server that vanished without closing the connection is noticed after about 30 s, or about 60 s on Windows, which always sends 10 probes.
@@ -408,7 +409,7 @@ Get State returns one health sentence. The first match wins.
 | `Permission denied on <where>. Check the device's permissions.` | macOS. Let the agent's user open the device. |
 | `<where> is in use by another program, or access was denied. Close the other program. If another Zelos agent holds it, run Release Port there.` | Close the other program. Two ports in this config that name one device also land here: the second cannot open it. |
 | `No device matches <port>. Connected: <devices or none>.` | Plug the device in, or pick one of the listed IDs in **Port**. The port connects when the device appears. Once the device is listed again, health is `Connecting to <where>.` until the next open, within 0.5 s. |
-| `Cannot resolve <host>. Check the host name.` | The host name did not resolve, or not within 2 s. |
+| `Cannot resolve <host>. Check the host name.` | The host name did not resolve, or not within 2 s, or is not a valid name, such as `bench..local`. |
 | `<where> accepted the connection but does not answer RFC 2217. Is it a raw TCP port? Use tcp instead.` | Set **Connection** to `tcp`, or point it at an RFC 2217 server. |
 | `Cannot connect to <where>. Check that the server is running.` | Start the TCP or RFC 2217 server, and check the host and port. |
 | `Cannot open <where>: <error>.` | The open failed for another reason, which the error names. The port keeps trying. |

@@ -312,7 +312,17 @@ def lookups(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, Any]]:
             raise socket.gaierror(socket.EAI_AGAIN, "timed out")
         if isinstance(answer, BaseException):
             raise answer
-        return [(family, socket.SOCK_STREAM, 6, "", (ip, port)) for family, ip in answer]
+        # As the real one: an IPv6 address comes with its flow info and scope ID.
+        return [
+            (
+                family,
+                socket.SOCK_STREAM,
+                6,
+                "",
+                (ip, port, 0, 0) if family == socket.AF_INET6 else (ip, port),
+            )
+            for family, ip in answer
+        ]
 
     monkeypatch.setattr(socket, "getaddrinfo", getaddrinfo)
     threads = threading.active_count()
@@ -334,6 +344,36 @@ def test_a_host_lookup_that_hangs_is_unresolved_within_the_connect_timeout(
         open_transport(port_config(host="bench.local", tcp_port=4001))
     assert 0.25 <= time.monotonic() - started < 1.0
     assert classify(caught.value) == "unresolved"
+
+
+@pytest.mark.parametrize("host", ["bench..local", "x" * 64 + ".local", ".local"])
+def test_a_malformed_host_name_is_unresolved(host: str) -> None:
+    # The name fails its IDNA encoding with UnicodeError, a ValueError, before any lookup.
+    with pytest.raises(UnresolvedHost) as caught:
+        open_transport(port_config(host=host, tcp_port=4001))
+    assert classify(caught.value) == "unresolved"
+
+
+def test_a_link_local_ipv6_host_keeps_its_zone() -> None:
+    try:
+        family, kind, proto, _, sockaddr = socket.getaddrinfo(
+            "fe80::1%lo0", 0, socket.AF_INET6, socket.SOCK_STREAM
+        )[0]
+        listener = socket.socket(family, kind, proto)
+        listener.bind(sockaddr)
+    except OSError:
+        pytest.skip("no link-local address on the loopback interface (macOS has fe80::1%lo0)")
+    with listener:
+        listener.listen()
+        listener.settimeout(5)
+        port = open_transport(port_config(host="fe80::1%lo0", tcp_port=listener.getsockname()[1]))
+        try:
+            peer, _ = listener.accept()
+            with peer:
+                peer.sendall(b"ok\n")
+                assert read(port, 3) == b"ok\n"
+        finally:
+            port.close()
 
 
 def test_an_unknown_host_is_unresolved(lookups: dict[str, Any]) -> None:
