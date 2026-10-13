@@ -63,3 +63,11 @@ E (124) esp_core_dump_flash: Core dump flash config is corrupted! CRC=0x7bd5c66f
 # constructed x=1f y=2 ⇒ {"rule": "plain", "values": []}
 # constructed crc=7BD5C66F n=1 ⇒ {"rule": "plain", "values": []}
 # constructed t=5V2 ⇒ {"rule": "plain", "values": []}
+# constructed: a period that ends a sentence ends the value, with a unit or without
+# constructed I (12) app: Set timeout=500ms. ⇒ {"rule": "esp-idf+kv", "values": [["timeout", 500, "ms"]]}
+# constructed I (12) env: temp=25.3C, hum=40%. ⇒ {"rule": "esp-idf+kv", "values": [["temp", 25.3, "C"], ["hum", 40, "%"]]}
+# constructed I (12) app: count=5. ⇒ {"rule": "esp-idf+kv", "values": [["count", 5, null]]}
+# constructed I (12) app: ver=1.2.3 ⇒ {"rule": "esp-idf", "values": []}
+# constructed: hex before a sentence's period still marks a line of hex
+# constructed I (12) usb: idVendor=0403. ⇒ {"rule": "esp-idf", "values": []}
+# constructed I (12) app: x=1f. ⇒ {"rule": "esp-idf", "values": []}

@@ -132,12 +132,14 @@ _TELEPLOT = re.compile(
     rf">([A-Za-z_][\w ./-]{{0,63}}):(?:(?:{_NUMBER}:)?{_NUMBER};)*(?:{_NUMBER}:)?({_NUMBER})"
     rf"(?:§({_UNIT}))?(?:\|(.*))?"
 )
-_KV = re.compile(rf"(?<![^ ,;(\[])([A-Za-z_][\w.]*)=({_NUMBER})({_UNIT})?(?![^ ,;)\]])")
+# A value ends at a separator, the line end, or a period that ends a sentence (`timeout=500ms.`);
+# `ver=1.2.3` gives none.
+_KV = re.compile(rf"(?<![^ ,;(\[])([A-Za-z_][\w.]*)=({_NUMBER})({_UNIT})?(?=\.?(?:[ ,;)\]]|$))")
 # A value that only hex explains marks a line of hex, whose other values are hex too
 # (`vaddr=40080000`): four or more digits led by a zero (`paddr=00010020`), a digit after a letter
 # (`crc=7bd5c66f`, `size=0a3ech`), or digits then lower-case a-f (`x=1f`). Units such as `dB`, `A`
 # or `C` are none of these.
-_HEX_KV = re.compile(r"(?<![^ ,;(\[])[A-Za-z_][\w.]*=([0-9A-Fa-f]++h?)(?![^ ,;)\]])")
+_HEX_KV = re.compile(r"(?<![^ ,;(\[])[A-Za-z_][\w.]*=([0-9A-Fa-f]++h?)(?=\.?(?:[ ,;)\]]|$))")
 _HEX_SUFFIX = re.compile(r"\d++[a-f]++")
 _VALUE = re.compile(rf"{_NUMBER}(?:{_UNIT})?")
 _DELIMITERS = re.compile(r"[,\t ]+")
