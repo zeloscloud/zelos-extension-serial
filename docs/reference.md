@@ -355,7 +355,9 @@ Acquire Port waits until the port opens, for up to 14 s.
 It fails at once on a permission error or an unsupported setting.
 After 14 s it fails with the port's health sentence, and the extension keeps trying to open the port.
 It also fails with the health sentence before an open that would end past the 14 s, judged by how long the port's last open took, so the caller gets the reason.
-One case can still exceed the wait: the first open of a network port whose host has 7 or more unreachable addresses, at 2 s each.
+An open slower than the port's last one can still end past the wait.
+Examples are the first open of a network port whose host has 7 or more unreachable addresses, at 2 s each, and a host that refuses connections and then stops answering during the wait.
+Acquire Port then fails with `<port> did not answer within 14.5 s`, and the extension keeps trying to open the port.
 
 ### Get State
 
