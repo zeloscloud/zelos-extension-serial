@@ -7,10 +7,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Read a Teleplot point printed right after a prompt, such as `esp32> >phase:0.245`, as a prompt and then the point, as a log line there is read. The line was logged whole without its value, and a Run Command waiting for that prompt ran to its timeout.
 - Leave Teleplot points, such as `>phase:2.6`, out of a Run Command reply, as log lines are. A board that streams Teleplot while it answers a command no longer puts a point in the reply.
 
 ### Fixed
 
+- Keep a colour on until a code changes it, as a terminal does: a device that printed one red code and then several lines had only the first logged as `error`.
+- Read a key=value at the end of a sentence, such as `timeout=500ms.` or `hum=40%.`: a value with a unit before the period was dropped, while `count=5.` was read. Treat `idVendor=0403.` as hex, as `idVendor=0403` is, instead of recording 403.
+- Report a Reset line of `rts` with flow control `rts/cts` as a config mistake. Flow control drives RTS, so on a CP2102 RTS stayed asserted whatever RTS at open said, and Reset Device answered `ok` without a pulse and left RTS deasserted.
+- On macOS, report a baud the driver refuses, such as 250000, as `Unsupported setting: baud 250000 is not supported.` serialx ignored the refusal, so the port opened at 115200 and reported nothing.
+- Keep the values of a command's reply line after its echo, on a device that prints only when asked. After each connect, the echo did not count as the first line, so the reply was taken for the rest of a split line and gave no signals.
+- Read a unit written with the Greek `μ` (U+03BC), such as `12μA`, as the micro sign. The value was dropped, and in key=value its name went with it.
+- Log a line that starts like a prompt, such as `Test #3: erasing flash`, when a pause or the port closing releases it. Only a line that a shell erases is a redrawn prompt; such a line was dropped, so the last line before a hang was lost.
+- On macOS, treat a Port field of `/dev/tty.X` as the listed device `/dev/cu.X`. Auto-configure added a second port for a board already configured by its `tty` path.
+- Report an RFC 2217 server that negotiates but never acknowledges a port setting as `Cannot open <where>: the RFC 2217 server did not acknowledge the port settings.` It was reported as a server that is not running.
+- Connect to a link-local IPv6 address, typed with its zone or returned for a `.local` name. The zone was dropped, so the connect failed with "No route to host". Report a malformed host name, such as `bench..local`, as one that cannot be resolved, and keep trying; it was reported as an unsupported setting, and the port stopped.
+- Record the values of a module whose event name, `<port>/<module>`, would pass the trace's 128-byte limit, such as a 64-character module on a 64-character port, or a non-ASCII module. Its rows were dropped and every flush counted an error. Cut a default port name at 64 bytes: a long non-ASCII port path or host made `<port>/log` too long, and the extension crashed at start.
 - Start, instead of crashing, with a Name or Prefix that starts or ends with a space: the spaces are dropped. Report a Prefix longer than 128 characters, a Prefix of only spaces, and a Prompt with a repeat count too large for Python, such as `a{4294967296}`, as config mistakes.
 - Store the device node, not the device ID, for two connected devices that share one ID, such as two boards whose CP2102 bridges both report serial `0001`. List Ports offered both boards with the first one's ID, and Auto-configure added two ports that both opened the first board. Auto-configure now also adds a second such board when the first is configured by its ID.
 

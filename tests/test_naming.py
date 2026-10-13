@@ -92,6 +92,20 @@ def test_a_suffixed_name_stays_within_128_bytes() -> None:
     assert is_trace_valid(raw[:31] + "_2")
 
 
+def test_a_budget_too_small_for_any_name_still_returns() -> None:
+    assert safe_name("adc", max_bytes=-1) == "unnamed"
+
+
+def test_a_name_fits_a_byte_budget_with_its_suffix() -> None:
+    namer = Namer(max_bytes=10)
+    assert (
+        namer.name("\N{LATIN SMALL LETTER E WITH ACUTE}" * 8)
+        == "\N{LATIN SMALL LETTER E WITH ACUTE}" * 5
+    )
+    assert namer.name("x" * 20) == "x" * 10
+    assert namer.name("x" * 21) == "x" * 8 + "_2"
+
+
 def test_ascii_name_drops_accents_and_other_non_ascii() -> None:
     assert ascii_name("Écran série") == "Ecran serie"
     assert ascii_name("µC board") == "C board"

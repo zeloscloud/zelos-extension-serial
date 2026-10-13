@@ -7,7 +7,7 @@ import zelos_sdk
 from zelos_sdk import schemas
 
 from .formats import Parsed
-from .naming import Namer
+from .naming import MAX_BYTES, Namer
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +70,8 @@ class _Held:
 @dataclass(slots=True)
 class _Port:
     log: zelos_sdk.TraceSourceEvent
-    modules: Namer = field(default_factory=lambda: Namer(("log", "values")))
+    # Module names fit after `<port>/` in an event name.
+    modules: Namer
     events: dict[str | None, _Event] = field(default_factory=dict)
     held: dict[str | None, _Held] = field(default_factory=dict)
     value_lines: int = 0
@@ -87,7 +88,8 @@ class Emitter:
 
     def add_port(self, port: str) -> None:
         """Register `<port>/log`."""
-        self._ports[port] = _Port(self._source.add_event(f"{port}/log", schemas.Log))
+        modules = Namer(("log", "values"), MAX_BYTES - len(f"{port}/".encode()))
+        self._ports[port] = _Port(self._source.add_event(f"{port}/log", schemas.Log), modules)
 
     def line(self, port: str, parsed: Parsed, time_ns: int) -> None:
         """Write one device line to `<port>/log` now, and its values to their event.

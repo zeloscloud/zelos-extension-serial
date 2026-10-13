@@ -91,7 +91,9 @@ def _with_default_names(ports: tuple[PortConfig, ...]) -> list[PortConfig]:
     named: list[PortConfig] = []
     for cfg in ports:
         if not cfg.name:
-            cfg = dataclasses.replace(cfg, name=unique_name(_default_name(cfg), used))
+            # 64 bytes, as a Name you set: `<port>/<module>` keeps room for a module.
+            name = unique_name(_default_name(cfg), used, max_bytes=64)
+            cfg = dataclasses.replace(cfg, name=name)
         named.append(cfg)
     return named
 

@@ -158,6 +158,21 @@ def test_default_names_do_not_depend_on_which_devices_are_plugged_in(
     assert seen == [["usb_0403_6001_A50285BI", "usb_0403_6001_B77777XY"]] * 3
 
 
+def test_run_starts_with_a_default_name_of_long_non_ascii_text(
+    trace_file: Recording, config_file
+) -> None:
+    # 70 accented letters: 64 characters were 128 bytes, past the trace's limit with `/log`.
+    host = "\N{LATIN SMALL LETTER E WITH ACUTE}" * 70 + ".local"
+    config_file({"ports": [{"connection": "tcp", "host": host, "tcp_port": 4001}]})
+    stop = threading.Event()
+    stop.set()
+
+    app.run(trace_file.source, open=lambda _cfg: FakeTransport(), stop=stop)
+
+    (name,) = actions.workers
+    assert len(name.encode()) <= 64
+
+
 def test_duplicates_get_a_suffix(config_file, listing: list[serialx.SerialPortInfo]) -> None:
     ports = [
         {"connection": "serial", "port": "/dev/tty.A"},

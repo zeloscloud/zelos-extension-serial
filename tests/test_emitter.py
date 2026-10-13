@@ -352,6 +352,23 @@ def test_modules_are_capped_and_their_lines_still_logged(
     assert len(recorded["dut/log"]) == 100
 
 
+@pytest.mark.parametrize(
+    ("port", "module"),
+    [("a" * 64, "m" * 64), ("dut", "\N{LATIN SMALL LETTER E WITH ACUTE}" * 64)],
+    ids=["64 + 64 characters", "128 bytes of module"],
+)
+def test_a_module_name_is_cut_to_fit_the_event_name(
+    trace_file: Recording, port: str, module: str
+) -> None:
+    emitter = Emitter(trace_file.source)
+    emitter.add_port(port)
+    emitter.line(port, parsed(("rail", 13.6, "V"), module=module), 1_000)
+    emitter.flush(port)
+    (signal,) = emitter.signals(port)
+    assert len(signal.event.encode()) <= 128
+    assert len(trace_file.events()[signal.event]) == 1
+
+
 def test_modules_past_the_cap_do_not_grow_the_emitter(emitter: Emitter) -> None:
     for i in range(64):
         emitter.line("dut", parsed(("v", 1.0, None), module=f"tag{i}"), 1_000 + i)
