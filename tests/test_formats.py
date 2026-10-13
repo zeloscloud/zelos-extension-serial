@@ -329,6 +329,8 @@ def test_custom_prompt_replaces_the_default() -> None:
         ("# ERROR: no such file", None),
         ("uart:~$ --- 3 messages dropped ---", None),
         ("[00:00:19.024,000] <inf> pump: rpm=1042", None),
+        ("esp32> >phase:0.245", ">phase:0.245"),
+        ("esp32> >phase", None),
     ],
 )
 def test_a_log_line_printed_right_after_a_prompt(text: str, log: str | None) -> None:

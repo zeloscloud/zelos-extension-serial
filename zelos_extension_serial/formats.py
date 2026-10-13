@@ -419,10 +419,10 @@ def is_prompt_redraw(line: Line, custom: re.Pattern[str] | None = None) -> bool:
 
 
 def log_after_prompt(text: str, custom: re.Pattern[str] | None = None) -> str | None:
-    """The log line a prompt runs into with no line end between them, or None."""
+    """The log line or Teleplot point a prompt runs into with no line end between, or None."""
     m = (custom or _PROMPT).match(text)
     if m is None or not 0 < m.end() < len(text):
         return None
     log = text[m.end() :]
     # The head alone: parse() would also move the trackers.
-    return log if _parse_head(log, None)[0].prefixed else None
+    return log if _parse_head(log, None)[0].prefixed or is_teleplot(log) else None

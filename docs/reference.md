@@ -51,9 +51,9 @@ Shell prompts are not logged and never carry values.
 The default set covers prompts such as `uart:~$ `, `# `, `$ `, `root@host:~# `, `esp32> `, `[esp32]> `, `=> `, `>>> `, `... `, `buildroot login: ` and `Password: `.
 A redrawn prompt with half-typed text after it is not logged either.
 
-A device can log right after it prints its prompt, with no line end between them.
+A device can log, or print a Teleplot point, right after it prints its prompt, with no line end between them.
 Then the prompt is counted, not logged.
-The log line is logged on its own with its level, module and time, and with its values unless the line is partial.
+The line is logged on its own with its level, module and time, and with its values unless the line is partial.
 
 Set **Prompt** in Advanced to a regular expression for your prompt.
 It must match the whole line, and it replaces the default set.
@@ -333,7 +333,7 @@ A longer Send returns `<port> did not answer within 4.5 s`, but the write still 
 
 Run Command takes `timeout_s`, from 0.1 to 60, default 2.
 The reply ends at the next prompt, after 300 ms without bytes once a reply line has arrived, or at the timeout.
-A prompt that runs into a log line ends the reply too, and the log line stays out of it.
+A prompt that runs into a log line or a Teleplot point ends the reply too, and the line stays out of it.
 
 Lines with a log prefix (Zephyr, ESP-IDF, Arduino on ESP32, Linux kernel) are logged but left out of the reply, and so are Teleplot lines such as `>phase:2.6` and Zephyr's `--- n messages dropped ---` notice.
 Every other line the device prints during the command joins the reply, such as boot lines without a log prefix after a reset.

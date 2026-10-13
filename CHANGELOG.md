@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Read a Teleplot point printed right after a prompt, such as `esp32> >phase:0.245`, as a prompt and then the point, as a log line there is read. The line was logged whole without its value, and a Run Command waiting for that prompt ran to its timeout.
 - Leave Teleplot points, such as `>phase:2.6`, out of a Run Command reply, as log lines are. A board that streams Teleplot while it answers a command no longer puts a point in the reply.
 
 ### Fixed
