@@ -43,6 +43,7 @@ Nor does the next line give values when it has no log prefix: it is most likely 
 
 After each connect, the first line is logged as usual.
 When it has no log prefix and carries values, its values are dropped: the device was most likely in the middle of printing it when the port opened, so its first value may be cut.
+An echo or a prompt that ends with a line end counts as that first line, so a reply after it keeps its values.
 
 ### Prompts
 

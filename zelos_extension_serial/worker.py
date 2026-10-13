@@ -381,6 +381,9 @@ class PortWorker(threading.Thread):
         # A piece of a long line is never a whole prompt or echo.
         if not line.cut:
             if self._prompt_or_echo(line):
+                # A whole echo or prompt ends at a line end, so the next line starts whole.
+                if not line.partial:
+                    self._mid_line = False
                 return
             if (log := log_after_prompt(line.text, self._cfg.prompt)) is not None:
                 self._on_prompt(whole=True)
