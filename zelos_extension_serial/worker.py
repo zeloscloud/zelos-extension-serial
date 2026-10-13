@@ -709,10 +709,20 @@ class PortWorker(threading.Thread):
         lines = self._counters["lines"]
         if self._cfg.values and lines >= 300 and not counters["value_lines"]:
             return f"No values found in {lines} lines. Run Sample to see the lines."
-        return (
+        health = (
             f"Connected. {lines} lines, {counters['signals']} signals, "
             f"{_CLOCK_HEALTH[self._clock_state()]}."
         )
+        late = counters["late_names"]
+        if late:
+            # Serial/log names each one; the health says that they exist and what to do.
+            names = "1 name" if late == 1 else f"{late} names"
+            verb, them = ("is", "it") if late == 1 else ("are", "them")
+            health += (
+                f" {names} first printed after the signals were set up {verb} not recorded:"
+                f" restart the extension to include {them}."
+            )
+        return health
 
     def _clock_state(self) -> Literal["in use", "not seen", "host"]:
         if self._settings.time_source == "host":

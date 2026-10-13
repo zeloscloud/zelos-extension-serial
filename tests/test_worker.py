@@ -67,6 +67,7 @@ class RecordingEmitter(Emitter):
     def __init__(self) -> None:
         self.events: list[tuple[str, Any, int]] = []
         self.value_lines = 0
+        self.late_names = 0
         self.signal_list: list[SignalInfo] = []
         self.flushes: list[int | None] = []
 
@@ -83,7 +84,11 @@ class RecordingEmitter(Emitter):
         return self.signal_list
 
     def counters(self, port: str) -> dict[str, int]:
-        return {"signals": len(self.signal_list), "late_names": 0, "value_lines": self.value_lines}
+        return {
+            "signals": len(self.signal_list),
+            "late_names": self.late_names,
+            "value_lines": self.value_lines,
+        }
 
     def lines(self) -> list[Parsed]:
         return [parsed for kind, parsed, _ in list(self.events) if kind == "line"]
@@ -1506,6 +1511,28 @@ def test_health_counts_lines_below_300_as_connected(rigs) -> None:
     rig = rigs(Port([zephyr(1.0)]))
     wait_until(lambda: len(rig.emitter.lines()) == 1)
     assert rig.health() == "Connected. 1 lines, 0 signals, device clock in use."
+
+
+@pytest.mark.parametrize(
+    ("late", "ending"),
+    [
+        (
+            1,
+            " 1 name first printed after the signals were set up is not recorded:"
+            " restart the extension to include it.",
+        ),
+        (
+            3,
+            " 3 names first printed after the signals were set up are not recorded:"
+            " restart the extension to include them.",
+        ),
+    ],
+)
+def test_health_says_names_printed_too_late_are_not_recorded(rigs, late: int, ending: str) -> None:
+    rig = rigs(Port([zephyr(1.0)]))
+    wait_until(lambda: len(rig.emitter.lines()) == 1)
+    rig.emitter.late_names = late
+    assert rig.health() == "Connected. 1 lines, 0 signals, device clock in use." + ending
 
 
 def test_a_failing_presence_check_counts_as_present(rigs, monkeypatch, caplog) -> None:

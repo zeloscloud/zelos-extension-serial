@@ -3,6 +3,12 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Say in Get State's health when names printed after a module's signals were set up are not recorded, and that restarting the extension includes them. `Serial/log` names each one, as before.
+
 ## [0.2.0] - 2026-10-12
 
 ### Changed
