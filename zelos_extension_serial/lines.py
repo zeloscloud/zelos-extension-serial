@@ -11,12 +11,35 @@ _CONTROL = re.compile(rb"[\r\n\x1b]")
 # Foreground and background.
 _RED = {31, 91, 41, 101}
 _YELLOW = {33, 93, 43, 103}
+_BACKGROUND = {41, 101, 43, 103}
 # An extended colour (38 foreground, 48 background, 58 underline) is followed by `5;n` or
 # `2;r;g;b`; these count the parameters after the 5 or the 2.
 _EXTENDED = {38, 48, 58}
 _EXTENDED_ARGS = {5: 1, 2: 3}
 # Real sequences are a few bytes; the cap stops line noise that opens one from eating a log.
 _MAX_PARAMS = 64
+
+
+_Colour = Literal["red", "yellow"] | None
+# Codes for a colour given with sub-parameters, `38:5:2` or `48:2::1:2:3`: no red or yellow.
+_OTHER_FG, _OTHER_BG = -38, -48
+
+
+def _sgr_code(param: bytes) -> int:
+    """One SGR parameter as a code; -1 for one that sets no colour."""
+    if not param:
+        # `ESC[m` and an empty parameter reset, as 0 does.
+        return 0
+    head, colon, _ = param.partition(b":")
+    if colon:
+        # Sub-parameters hold their own arguments: `4:3` is an underline style, not a colour.
+        return {b"38": _OTHER_FG, b"48": _OTHER_BG}.get(head, -1)
+    return int(param) if param.isdigit() else -1
+
+
+def _stronger(a: _Colour, b: _Colour) -> _Colour:
+    """Red outranks yellow, and either outranks none."""
+    return "red" if "red" in (a, b) else "yellow" if "yellow" in (a, b) else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,7 +123,10 @@ class LineSplitter:
         self.pending_since = None
         self._params = bytearray()
         self._state = _TEXT
-        self._colour: Literal["red", "yellow"] | None = None
+        self._colour: _Colour = None
+        # The terminal's pen: a colour stays set over line ends until a code changes it.
+        self._fg: _Colour = None
+        self._bg: _Colour = None
         self._cut = False
         # The last sequence moved the cursor left: an erase now clears a redrawn prompt.
         self._left = False
@@ -110,6 +136,8 @@ class LineSplitter:
     def _append(self, text: bytes, out: list[Line], host_ns: int) -> None:
         if not self._line:
             self.pending_since = self._last_ns
+        # Text takes the pen's colour, as a terminal shows it.
+        self._colour = _stronger(self._colour, _stronger(self._fg, self._bg))
         self._line += text
         self._left = False
         while len(self._line) > self._max_bytes:
@@ -144,6 +172,9 @@ class LineSplitter:
             elif byte == 0x5D:
                 self._state = _OSC
             elif 0x30 <= byte <= 0x7E:
+                # `ESC c` resets the terminal, and with it the pen.
+                if byte == 0x63:
+                    self._fg = self._bg = None
                 self._state = _TEXT
             elif not 0x20 <= byte <= 0x2F:
                 # Any other byte abandons the escape, so a stray ESC cannot eat a line end.
@@ -181,16 +212,38 @@ class LineSplitter:
             self._sgr()
 
     def _sgr(self) -> None:
-        codes = [int(c) if c.isdigit() else -1 for c in bytes(self._params).split(b";")]
+        params = bytes(self._params)
+        # A private sequence, such as xterm's `ESC[>4;2m`, sets no colour.
+        if params[:1] in (b"<", b"=", b">", b"?"):
+            return
+        codes = [_sgr_code(param) for param in params.split(b";")]
         i = 0
         while i < len(codes):
             code = codes[i]
             if code in _EXTENDED:
+                # Another colour: no longer red or yellow.
+                if code == 38:
+                    self._fg = None
+                elif code == 48:
+                    self._bg = None
                 kind = codes[i + 1] if i + 1 < len(codes) else -1
                 i += 2 + _EXTENDED_ARGS.get(kind, -1)
                 continue
-            if code in _RED:
-                self._colour = "red"
-            elif code in _YELLOW and self._colour is None:
-                self._colour = "yellow"
+            if code in _RED or code in _YELLOW:
+                colour: _Colour = "red" if code in _RED else "yellow"
+                if code in _BACKGROUND:
+                    self._bg = colour
+                else:
+                    self._fg = colour
+                self._colour = _stronger(self._colour, colour)
+            elif code == 0:
+                self._fg = self._bg = None
+            elif code == _OTHER_FG:
+                self._fg = None
+            elif code == _OTHER_BG:
+                self._bg = None
+            elif code == 39 or 30 <= code <= 37 or 90 <= code <= 97:
+                self._fg = None
+            elif code == 49 or 40 <= code <= 47 or 100 <= code <= 107:
+                self._bg = None
             i += 1

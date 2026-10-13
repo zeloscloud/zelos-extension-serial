@@ -224,10 +224,57 @@ def test_colour_split_across_chunks_is_recognised() -> None:
     assert split(b"\x1b[1;3", b"3mwarn\n") == [("warn", "yellow", False)]
 
 
-def test_colour_belongs_to_the_erased_partial_not_the_next_line() -> None:
-    assert split(b"\x1b[1;31m> \x1b[2D\x1b[J log\n") == [
+def test_a_prompt_colour_that_is_reset_stays_off_the_next_line() -> None:
+    assert split(b"\x1b[1;31m> \x1b[0m\x1b[2D\x1b[J log\n") == [
         ("> ", "red", True),
         (" log", None, False),
+    ]
+
+
+def test_a_colour_stays_on_over_an_erase_until_a_code_changes_it() -> None:
+    # As a terminal shows it: an erase does not reset the pen.
+    assert split(b"\x1b[1;31m> \x1b[2D\x1b[J log\n") == [
+        ("> ", "red", True),
+        (" log", "red", False),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("reset", "colour"),
+    [(b"", "red"), (b"\x1b[0m", None), (b"\x1b[m", None), (b"\x1b[39m", None), (b"\x1b[32m", None)],
+    ids=["none", "0", "empty", "default foreground", "green"],
+)
+def test_a_colour_carries_to_the_next_lines_until_a_code_changes_it(
+    reset: bytes, colour: str | None
+) -> None:
+    assert split(b"\x1b[31mError: flash write failed\r\n" + reset + b"retrying\r\n") == [
+        ("Error: flash write failed", "red", False),
+        ("retrying", colour, False),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("code", "colour"),
+    [
+        (b"\x1b[4:3m", "red"),
+        (b"\x1b[>4;2m", "red"),
+        (b"\x1b[38:5:2m", None),
+        (b"\x1bc", None),
+    ],
+    ids=["underline style", "private", "colon colour", "terminal reset"],
+)
+def test_only_a_colour_or_a_reset_changes_the_pen(code: bytes, colour: str | None) -> None:
+    assert split(b"\x1b[31mA\r\n" + code + b"B\r\n") == [
+        ("A", "red", False),
+        ("B", colour, False),
+    ]
+
+
+def test_a_background_colour_outlives_a_foreground_reset() -> None:
+    assert split(b"\x1b[41;33mx\r\n\x1b[39my\r\n\x1b[49mz\r\n") == [
+        ("x", "red", False),
+        ("y", "red", False),
+        ("z", None, False),
     ]
 
 
