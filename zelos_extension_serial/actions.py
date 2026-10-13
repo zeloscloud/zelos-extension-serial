@@ -4,7 +4,8 @@ from typing import Any
 
 from zelos_sdk.actions import SelectField, action, register_field_type
 
-from . import discovery
+from . import baud, discovery
+from .config import PortConfig, serial_port
 from .naming import ascii_name, unique_name
 from .worker import PortWorker, RequestKind
 
@@ -18,7 +19,8 @@ _ACQUIRE_TIMEOUT_S = 15.0
 _MARGIN_S = 0.5
 _MIN_COMMAND_S, _MAX_COMMAND_S = 0.1, 60.0
 _MAX_LINES = 1000
-# The first run after an install imports for 10 to 12 s on macOS.
+# The first run after an install imports for 10 to 12 s on macOS; Auto-configure then listens to
+# the devices it adds for up to baud.LISTEN_S.
 _STANDALONE_TIMEOUT_S = 30
 
 
@@ -78,8 +80,8 @@ def list_ports() -> dict[str, Any]:
 
 @action(
     "Auto-configure",
-    "Keep the configured ports and add one for each USB serial device not already listed, "
-    "or the demo device when there are no ports and no devices.",
+    "Keep the configured ports and add one for each USB serial device not already listed, at the "
+    "baud its output reads as text, or the demo device when there are no ports and no devices.",
     timeout=_STANDALONE_TIMEOUT_S,
     standalone=True,
     read_only=True,
@@ -98,7 +100,7 @@ def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         and isinstance(p.get("port"), str)
     ]
     used = {p["name"] for p in ports if isinstance(p, dict) and isinstance(p.get("name"), str)}
-    added = 0
+    added: list[tuple[dict[str, Any], PortConfig]] = []
     for device in discovery.list_ports():
         if device.vid is None or any(device.named_by(field) for field in fields):
             continue
@@ -107,16 +109,36 @@ def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         if device.product and (name := ascii_name(device.product)):
             port["name"] = unique_name(name, used)
         ports.append(port)
-        added += 1
+        # Opened by its path: the ID would list the devices again.
+        added.append((port, serial_port(device.path)))
     if added:
-        noun = "device" if added == 1 else "devices"
-        message = f"Added {added} serial {noun}."
+        heard = baud.detect([cfg for _, cfg in added])
+        for (port, _), found in zip(added, heard, strict=True):
+            if found.baud is not None:
+                port["baud"] = found.baud
+        message = _added(added, heard)
     elif ports:
         message = "No new USB serial devices found."
     else:
         ports = [{"connection": "demo"}]
         message = "No USB serial devices found; added the demo device."
     return {"status": "success", "config": {"ports": ports}, "message": message}
+
+
+def _added(added: list[tuple[dict[str, Any], PortConfig]], heard: list[baud.Heard]) -> str:
+    """How many devices were added, and each one's baud or why it keeps the default."""
+    if len(added) == 1:
+        [(_, cfg)], [found] = added, heard
+        if found.baud is not None:
+            return f"Added 1 serial device at {found.baud} baud."
+        return f"Added 1 serial device; {found.why}, so it uses {cfg.baud}."
+    each = [
+        f"{port.get('name', port['port'])} at {found.baud} baud"
+        if found.baud is not None
+        else f"{port.get('name', port['port'])}: {found.why}, so it uses {cfg.baud}"
+        for (port, cfg), found in zip(added, heard, strict=True)
+    ]
+    return f"Added {len(added)} serial devices: {'; '.join(each)}."
 
 
 # A field's `default` only fills the form; a caller that omits the field gets the Python default,

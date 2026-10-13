@@ -42,7 +42,7 @@ Serial records it twice, both at the board's 12.340 s:
 
 ## Quick start
 
-1. **Configure** a port: pick a device in the **Port** list, or press **Auto-configure** to add one port for each USB serial device that no port uses yet.
+1. **Configure** a port: pick a device in the **Port** list, or press **Auto-configure** to add one port for each USB serial device that no port uses yet, set to the baud the device prints at.
 2. **Start** Serial. Lines appear in the Log panel, and values appear as signals.
 
 No hardware? Set **Connection** to **Demo board**, or press Auto-configure with no port and no device.
@@ -173,7 +173,7 @@ Leave it out to act on the first configured port.
 | Action | Path | What it does | Read-only |
 |---|---|---|---|
 | List Ports | `Serial/list_ports` | Lists every serial port on this machine, USB or not, for the **Port** field. Works while the extension is stopped. | yes |
-| Auto-configure | `Serial/auto_config` | Keeps the configured ports and adds one `serial` port for each USB serial device that no port uses yet. Opens no port. Works while the extension is stopped. | yes |
+| Auto-configure | `Serial/auto_config` | Keeps the configured ports and adds one `serial` port for each USB serial device that no port uses yet, at the baud its output reads as text. Listens to the new devices for up to 9 s and writes nothing to them; opens no configured port. Works while the extension is stopped. | yes |
 | Send | `Serial/send` | Writes `text` and the line ending. With `hex`, writes `text` as hex bytes, such as `0d0a`, and adds nothing. | no |
 | Run Command | `Serial/command` | Sends `text` as a shell command and returns the lines the device prints in reply. | no |
 | Reset Device | `Serial/reset` | Pulses the port's reset line for 100 ms. | no |

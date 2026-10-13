@@ -140,6 +140,11 @@ def load(path: Path | None = None) -> Settings:
     )
 
 
+def serial_port(port: str) -> PortConfig:
+    """A serial port on `port` with every other setting at its default."""
+    return _port({"connection": "serial", "port": port})
+
+
 def _port(item: dict[str, Any]) -> PortConfig:
     """Raises re.error or OverflowError when the prompt is not a regular expression."""
     connection = item["connection"]

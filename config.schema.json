@@ -6,7 +6,7 @@
   "properties": {
     "ports": {
       "type": "array", "title": "Ports", "minItems": 1, "default": [],
-      "description": "One entry for each device. Auto-configure adds a port for each USB serial device not already listed.",
+      "description": "One entry for each device. Auto-configure adds a port for each USB serial device not already listed, at the baud its output reads as text.",
       "items": {
         "type": "object", "title": "Port",
         "properties": {
