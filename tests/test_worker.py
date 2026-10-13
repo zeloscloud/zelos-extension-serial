@@ -144,6 +144,7 @@ class Rig:
     ) -> None:
         self.clock = Clock()
         self.emitter = RecordingEmitter()
+        self.budgets: list[float | None] = []
         self.script = list(script)
         self.opened: list[int] = []
         self.on_open = on_open
@@ -155,8 +156,9 @@ class Rig:
             self.stop_flag = VirtualStop(self.clock)
             self.worker._stopping = self.stop_flag
 
-    def _open(self, cfg: PortConfig) -> Transport:
+    def _open(self, cfg: PortConfig, budget_s: float | None = None) -> Transport:
         self.opened.append(self.clock.ns)
+        self.budgets.append(budget_s)
         if self.on_open:
             self.on_open(self)
         item = self.script.pop(0) if len(self.script) > 1 else self.script[0]
@@ -816,14 +818,14 @@ def test_acquire_gives_the_last_reason_when_its_wait_ends(rigs) -> None:
     assert rig.ask("state")["state"] == "connecting"
 
 
-def test_acquire_settles_before_an_open_as_slow_as_the_last_would_end_past_its_wait(
-    rigs,
-) -> None:
-    """A host whose three addresses each take the 2 s connect timeout: every open takes 6 s."""
+def test_an_open_during_acquire_gets_only_the_wait_that_is_left(rigs) -> None:
+    """A host whose three addresses each take the 2 s connect timeout: an open takes 6 s, or
+    less when the budget is less."""
 
     def slow(rig: Rig) -> None:
-        if len(rig.opened) > 1:
-            rig.clock.ns += 6 * S
+        budget = rig.budgets[-1]
+        if budget is not None:
+            rig.clock.ns += min(6 * S, int(budget * S))
 
     rig = rigs(Port(), ConnectionRefusedError("timed out"), virtual=True, on_open=slow)
     rig.ask("release")
@@ -832,9 +834,11 @@ def test_acquire_settles_before_an_open_as_slow_as_the_last_would_end_past_its_w
     acquire.add_done_callback(lambda _: settled.append(rig.clock.ns))
     with pytest.raises(RuntimeError, match="^Cannot connect to fake. Check that the server is"):
         acquire.result(timeout=2)
-    # Opens at 0 and 6.5 s; one more from 13.5 s would end at 19.5 s.
-    assert [t - rig.opened[1] for t in rig.opened[1:3]] == [0, 6500 * MS]
-    assert settled[0] - rig.opened[1] == 13500 * MS
+    # Opens at 0, 6.5 and 13.5 s, each given the rest of the 14 s wait; the last ends with it.
+    start = rig.opened[1]
+    assert [t - start for t in rig.opened[1:4]] == [0, 6500 * MS, 13500 * MS]
+    assert rig.budgets[1:4] == [14.0, 7.5, 0.5]
+    assert settled[0] - start == 14 * S
 
 
 def test_acquire_opens_at_once_with_the_backoff_reset(rigs) -> None:

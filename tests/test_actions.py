@@ -520,7 +520,7 @@ def ports(trace_file: Recording, tmp_path: Path, fake: FakeTransport) -> Iterato
     actions.workers.clear()
     for cfg in settings.ports:
         emitter.add_port(cfg.name)
-        opener = open_transport if cfg.name == "demo" else (lambda _cfg: fake)
+        opener = open_transport if cfg.name == "demo" else (lambda _cfg, budget_s=None: fake)
         actions.workers[cfg.name] = PortWorker(cfg, emitter, settings, open=opener)
         actions.workers[cfg.name].start()
     for name in actions.workers:

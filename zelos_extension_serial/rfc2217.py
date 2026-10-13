@@ -28,6 +28,10 @@ class SettingsNotAcked(Exception):
 class FixedRFC2217Serial(RFC2217Serial):
     """serialx's sync RFC 2217 client, fixed to work with ser2net 4.3.4 to 4.6.7."""
 
+    # A time.monotonic() deadline no reply wait passes; None leaves each wait at the connect
+    # timeout.
+    open_deadline: float | None = None
+
     # A raw TCP console or a plain telnet server accepts the connection, then never agrees to
     # RFC 2217: serialx raises SerialException on a refusal, and the reply wait times out otherwise.
     def _negotiate(self) -> None:
@@ -72,6 +76,8 @@ class FixedRFC2217Serial(RFC2217Serial):
         # while the server never replies.
         assert self._connect_timeout is not None
         deadline = time.monotonic() + self._connect_timeout
+        if self.open_deadline is not None:
+            deadline = min(deadline, self.open_deadline)
         while (reply := pop()) is None:
             remaining = deadline - time.monotonic()
             # Checked first: a socket timeout of 0 means non-blocking, not expired.
