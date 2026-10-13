@@ -30,6 +30,8 @@ class Line:
     partial: bool
     # A piece of a line longer than `max_bytes`; the last piece too.
     cut: bool
+    # A cursor left and an erase released it: a shell redrawing its prompt.
+    erased: bool = False
 
 
 class LineSplitter:
@@ -121,10 +123,12 @@ class LineSplitter:
             self._cut = True
             self.long_lines += 1
 
-    def _release(self, out: list[Line], host_ns: int, *, partial: bool = False) -> None:
+    def _release(
+        self, out: list[Line], host_ns: int, *, partial: bool = False, erased: bool = False
+    ) -> None:
         if self._line:
             text = self._line.decode("utf-8", "replace")
-            out.append(Line(text, host_ns, self._colour, partial, self._cut))
+            out.append(Line(text, host_ns, self._colour, partial, self._cut, erased))
             self._line = bytearray()
         self.pending_since = None
         self._colour = None
@@ -172,7 +176,7 @@ class LineSplitter:
         # A shell redraws its prompt with a cursor left and then an erase (Zephyr: `ESC[8D ESC[J`).
         # An erase alone, as grep --color and gcc print after each colour, is not a line break.
         if byte in (0x4A, 0x4B) and left:
-            self._release(out, host_ns, partial=True)
+            self._release(out, host_ns, partial=True, erased=True)
         elif byte == 0x6D:
             self._sgr()
 
