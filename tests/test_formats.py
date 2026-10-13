@@ -148,6 +148,22 @@ def test_values_never_come_from_the_module_file_or_caller(text: str) -> None:
 
 
 @pytest.mark.parametrize(
+    "text",
+    [
+        "I (100) adc: current=12\u03bcA",
+        ">current:12\u00a7\u03bcA",
+        "I (100) adc: Current: 12 \u03bcA",
+    ],
+    ids=["kv", "teleplot", "label-value"],
+)
+def test_a_unit_in_greek_mu_keeps_its_value(text: str) -> None:
+    # U+03BC, which NFKC gives for the micro sign U+00B5 and Greek keyboards type.
+    shape, repeat = ShapeTracker(), RepeatTracker()
+    values = [parse(text, None, shape, repeat).values for _ in range(2)][-1]
+    assert [(v.value, v.unit) for v in values] == [(12.0, "\u03bcA")]
+
+
+@pytest.mark.parametrize(
     ("lines", "rule"),
     [
         (["[00:00:00.020,000] <inf> dcdc: up"], "zephyr"),
