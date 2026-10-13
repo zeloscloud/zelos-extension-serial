@@ -182,7 +182,7 @@ The config holds a list of `ports` and one `advanced` group.
 
 | Key | Title | serial | tcp | rfc2217 | Default |
 |---|---|---|---|---|---|
-| `connection` | Connection | yes | yes | yes | `serial` |
+| `connection` | Connection | required | required | required | none; the form starts at `serial` |
 | `name` | Name | yes | yes | yes | see [Port names](#port-names) |
 | `port` | Port | required | | | |
 | `host` | Host | | required | required | |
