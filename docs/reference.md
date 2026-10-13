@@ -11,6 +11,7 @@ The name does not depend on which devices are plugged in, so data from one board
 Names compare without regard to case.
 Two ports that would get the same name get `_2`, `_3` and so on; two Names you set that differ only in case are a config error.
 Spaces at either end of a Name or the Prefix are dropped, since the trace refuses a name that starts with one.
+A default name is cut at 64 bytes, as a Name you set is, and a module name is cut so that `<port>/<module>` fits the trace's limit of 128 bytes.
 
 ### Notes and sent text
 
