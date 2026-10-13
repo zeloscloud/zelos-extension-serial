@@ -24,6 +24,7 @@ The marks keep these rows apart from device output where only the message shows.
 A line ends at CR, LF or CRLF.
 Terminal escape sequences and NUL bytes are removed.
 A line with no level of its own is logged as `error` when the device printed it in red (colour codes 31, 91, 41 or 101), and as `warn` in yellow (33, 93, 43 or 103).
+As on a terminal, a colour lasts over line ends until a code changes it, such as `0`, `39` or another colour, so every line of a red block counts.
 
 A line longer than 4096 bytes is cut into pieces of at most 4096 bytes, never inside a UTF-8 character.
 Each piece is logged with the line's colour; no piece gives values or counts as a prompt or an echo.

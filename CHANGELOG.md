@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Keep a colour on until a code changes it, as a terminal does: a device that printed one red code and then several lines had only the first logged as `error`.
 - Read a key=value at the end of a sentence, such as `timeout=500ms.` or `hum=40%.`: a value with a unit before the period was dropped, while `count=5.` was read. Treat `idVendor=0403.` as hex, as `idVendor=0403` is, instead of recording 403.
 - Report a Reset line of `rts` with flow control `rts/cts` as a config mistake. Flow control drives RTS, so on a CP2102 RTS stayed asserted whatever RTS at open said, and Reset Device answered `ok` without a pulse and left RTS deasserted.
 - On macOS, report a baud the driver refuses, such as 250000, as `Unsupported setting: baud 250000 is not supported.` serialx ignored the refusal, so the port opened at 115200 and reported nothing.
