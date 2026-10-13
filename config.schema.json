@@ -27,7 +27,7 @@
                     "stop_bits": { "type": "string", "title": "Stop bits", "enum": ["1", "1.5", "2"], "default": "1" },
                     "flow_control": { "type": "string", "title": "Flow control", "enum": ["none", "rts/cts", "xon/xoff"], "default": "none" },
                     "dtr": { "type": "string", "title": "DTR at open", "description": "Some boards reset when this line changes; see Board reset in the README.", "enum": ["on", "off"], "default": "on" },
-                    "rts": { "type": "string", "title": "RTS at open", "description": "Some boards reset when this line changes; see Board reset in the README.", "enum": ["on", "off"], "default": "on" },
+                    "rts": { "type": "string", "title": "RTS at open", "description": "Some boards reset when this line changes; see Board reset in the README. No effect with flow control rts/cts, which drives RTS.", "enum": ["on", "off"], "default": "on" },
                     "reset_line": { "type": "string", "title": "Reset line", "description": "The line Reset Device pulses. ESP32 auto-reset boards: rts, with DTR at open and RTS at open both off. Arduino boards: dtr, with both on.", "enum": ["none", "dtr", "rts"], "default": "none" },
                     "line_ending": { "type": "string", "title": "Line ending", "description": "Added after text sent by Send and Run Command.", "enum": ["LF", "CRLF", "CR"], "default": "LF" },
                     "prompt": { "type": "string", "title": "Prompt", "description": "A regular expression for the whole prompt line. Empty uses common shell prompts." },

@@ -340,7 +340,8 @@ def test_every_setting_at_once(tmp_path: Path) -> None:
             "flow_control": "rts/cts",
             "dtr": "off",
             "rts": "off",
-            "reset_line": "rts",
+            # Not rts: flow control rts/cts drives RTS.
+            "reset_line": "dtr",
             "line_ending": "CRLF",
             "prompt": r"dut> ",
             "values": False,
@@ -361,7 +362,7 @@ def test_every_setting_at_once(tmp_path: Path) -> None:
         xonxoff=False,
         dtr=False,
         rts=False,
-        reset_line="rts",
+        reset_line="dtr",
         line_ending=b"\r\n",
         prompt=re.compile(r"dut> "),
         values=False,
@@ -403,6 +404,17 @@ def test_names_that_differ_only_in_case_are_duplicates(tmp_path: Path) -> None:
 
 
 # --- prompt ---
+
+
+def test_reset_line_rts_with_rts_cts_flow_control_is_a_problem(tmp_path: Path) -> None:
+    # Measured on a CP2102: flow control holds RTS asserted, and the pulse left it low.
+    config = {"ports": [advanced(SERIAL, flow_control="rts/cts", reset_line="rts")]}
+    assert problems(tmp_path, config) == [
+        "Port 1 (serial), Reset line: rts does not work with flow control rts/cts, "
+        "which drives RTS. Use dtr or none."
+    ]
+    config = {"ports": [advanced(SERIAL, flow_control="rts/cts", reset_line="dtr")]}
+    assert ports(tmp_path, *config["ports"])[0].reset_line == "dtr"
 
 
 def test_prompt_is_compiled(tmp_path: Path) -> None:

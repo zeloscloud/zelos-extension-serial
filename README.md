@@ -315,6 +315,7 @@ Some boards therefore reset once when the extension connects, and again on Acqui
 On Windows, `off` asks the driver to keep the line deasserted from the open.
 Release Port and stopping the extension leave DTR and RTS as they are.
 TCP and RFC 2217 ports have no reset line, and an RFC 2217 port keeps the DTR and RTS levels the server sets.
+With **Flow control** `rts/cts`, the port drives RTS itself: **RTS at open** has no effect, and **Reset line** cannot be `rts`.
 
 ## Health
 
