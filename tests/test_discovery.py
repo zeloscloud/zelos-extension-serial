@@ -149,6 +149,15 @@ def test_a_shared_device_id_names_only_the_first_device_by_path(
     assert second.named_by("/dev/ttyUSB3")
 
 
+def test_macos_tty_and_cu_nodes_are_one_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(discovery, "_WINDOWS", False)
+    monkeypatch.setattr(discovery, "_MACOS", True)
+    assert same_port("/dev/tty.usbserial-0001", "/dev/cu.usbserial-0001")
+    assert not same_port("/dev/tty.usbserial-0001", "/dev/cu.usbserial-0002")
+    monkeypatch.setattr(discovery, "_MACOS", False)
+    assert not same_port("/dev/tty.usbserial-0001", "/dev/cu.usbserial-0001")
+
+
 def test_present_by_device_id(listing: list[serialx.SerialPortInfo]) -> None:
     assert not present(FTDI)
     listing.append(_listed("COM7", 0x0403, 0x6001, "A50285BI"))
