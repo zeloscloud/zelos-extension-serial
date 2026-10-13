@@ -151,6 +151,7 @@ A unit follows the number: right after it in key=value, after `§` in Teleplot, 
 It starts with a letter, `%`, `°`, `µ` (the micro sign or the Greek `μ`) or `Ω`, and has up to 8 characters; `²` and `³` can follow but cannot start it.
 A `/` and up to 7 more characters can follow, and a digit can appear only there, as in `m/s2`.
 So `5V2` gives no value.
+In key=value, a value ends at a space, `,`, `;`, `)`, `]` or the line end, or at a period just before one of them, as in `timeout=500ms.`; `ver=1.2.3` gives no value.
 
 ### Hex detection
 
