@@ -107,7 +107,8 @@ def load(path: Path | None = None) -> Settings:
     for index, item in enumerate(raw["ports"], 1):
         try:
             port = _port(item)
-        except re.error as e:
+        # A repeat count past the C limit, such as a{4294967296}, raises OverflowError.
+        except (re.error, OverflowError) as e:
             title = _fields(item["connection"])[1]["prompt"]["title"]
             problems.append(
                 f"{_where(index, item)}, {title}: is not a valid regular expression ({e})."
@@ -127,14 +128,14 @@ def load(path: Path | None = None) -> Settings:
     advanced.update(raw.get("advanced", {}))
     return Settings(
         ports=tuple(ports),
-        prefix=advanced["prefix"],
+        prefix=advanced["prefix"].strip(" "),
         time_source=advanced["time_source"],
         log_level=advanced["log_level"],
     )
 
 
 def _port(item: dict[str, Any]) -> PortConfig:
-    """Raises re.error when the prompt is not a regular expression."""
+    """Raises re.error or OverflowError when the prompt is not a regular expression."""
     connection = item["connection"]
     if connection == "demo":
         v = {**_DEFAULTS, "reset_line": "dtr", "line_ending": "LF", "prompt": None, "values": True}
@@ -142,7 +143,8 @@ def _port(item: dict[str, Any]) -> PortConfig:
         own, group = _fields(connection)
         v = {**_DEFAULTS, **_read(item, own), **_read(item.get("advanced", {}), group)}
     return PortConfig(
-        name=item.get("name", ""),
+        # The trace refuses a name that starts with a space.
+        name=item.get("name", "").strip(" "),
         connection=connection,
         port=v["port"],
         host=v["host"],
@@ -243,7 +245,8 @@ def _wording(error: ValidationError, schema: dict[str, Any]) -> str:
         return f"must be {_KINDS[schema['type']]}."
     if error.validator in ("minimum", "maximum"):
         return f"must be from {schema['minimum']} to {schema['maximum']}."
-    if error.validator == "minLength" or (error.validator == "pattern" and error.instance == ""):
+    blank = isinstance(error.instance, str) and not error.instance.strip(" ")
+    if error.validator == "minLength" or (error.validator == "pattern" and blank):
         return "must not be empty."
     if error.validator == "pattern":
         # The one pattern in the schema: a name the trace accepts.

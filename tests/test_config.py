@@ -261,6 +261,12 @@ def test_settings_defaults(tmp_path: Path) -> None:
     assert (settings.prefix, settings.time_source, settings.log_level) == ("Serial", "auto", "INFO")
 
 
+def test_prefix_is_read_without_spaces_at_its_ends(tmp_path: Path) -> None:
+    # The trace refuses a source name that starts or ends with a space.
+    settings = load(write(tmp_path, {"ports": [DEMO], "advanced": {"prefix": " Bench 1 "}}))
+    assert settings.prefix == "Bench 1"
+
+
 def test_settings_are_read(tmp_path: Path) -> None:
     advanced_settings = {"prefix": "Bench 1", "time_source": "host", "log_level": "DEBUG"}
     settings = load(write(tmp_path, {"ports": [DEMO], "advanced": advanced_settings}))
@@ -365,8 +371,12 @@ def test_every_setting_at_once(tmp_path: Path) -> None:
 # --- names ---
 
 
-def test_name_is_kept_as_typed(tmp_path: Path) -> None:
-    assert ports(tmp_path, {**TCP, "name": " My Port_1-b "})[0].name == " My Port_1-b "
+def test_name_is_kept_as_typed_without_spaces_at_its_ends(tmp_path: Path) -> None:
+    assert ports(tmp_path, {**TCP, "name": " My Port_1-b "})[0].name == "My Port_1-b"
+
+
+def test_a_name_of_spaces_is_no_name(tmp_path: Path) -> None:
+    assert ports(tmp_path, {**TCP, "name": "   "})[0].name == ""
 
 
 def test_unnamed_ports_are_not_duplicates(tmp_path: Path) -> None:
@@ -410,6 +420,11 @@ def test_invalid_prompt_names_the_port(tmp_path: Path) -> None:
     with pytest.raises(re.error) as error:
         re.compile("(unclosed")
     assert problem == f"Port 2 (tcp), Prompt: is not a valid regular expression ({error.value})."
+
+
+def test_a_prompt_repeat_count_past_the_limit_names_the_port(tmp_path: Path) -> None:
+    (problem,) = problems(tmp_path, {"ports": [advanced(TCP, prompt="a{4294967296}")]})
+    assert problem.startswith("Port 1 (tcp), Prompt: is not a valid regular expression (")
 
 
 def test_prompt_and_duplicate_problems_are_reported_together(tmp_path: Path) -> None:
@@ -496,6 +511,11 @@ def test_error_message_joins_the_problems(tmp_path: Path) -> None:
             "Settings, Prefix: use letters, digits, spaces, _ and - only.",
         ),
         ({"ports": [DEMO], "advanced": {"prefix": ""}}, "Settings, Prefix: must not be empty."),
+        ({"ports": [DEMO], "advanced": {"prefix": "   "}}, "Settings, Prefix: must not be empty."),
+        (
+            {"ports": [DEMO], "advanced": {"prefix": "a" * 129}},
+            "Settings, Prefix: must be at most 128 characters.",
+        ),
         (
             {"ports": [DEMO], "advanced": {"log_level": "TRACE"}},
             'Settings, Log level: must be "DEBUG", "INFO", "WARNING" or "ERROR".',
