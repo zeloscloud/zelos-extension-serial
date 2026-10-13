@@ -3,6 +3,12 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Set each port Auto-configure adds to the baud its device prints at, and say which, such as `Added 1 serial device at 9600 baud.` It listens at 115200, 9600, 57600, 38400, 19200, 230400, 460800 and 921600 baud and takes the first whose output reads as text. A device with no readable output keeps 115200, and the message says why, such as `no data arrived`. It opens only the devices it adds, writes nothing to them, listens to them at once, and ends within about 10 s.
+
 ## [0.2.1] - 2026-10-13
 
 ### Fixed

@@ -151,6 +151,14 @@ class SerialxTransport:
     def set_lines(self, dtr: bool | None, rts: bool | None) -> None:
         self._port.set_modem_pins(dtr=dtr, rts=rts)
 
+    def set_baud(self, baud: int) -> None:
+        """Change the baud of the open port, and drop the bytes read at the old one."""
+        old = self._port.baudrate
+        self._port.reconfigure_port(baudrate=baud)
+        self._seconds_per_byte *= old / baud
+        # POSIX flushes on any change; Windows does not.
+        self._port.reset_read_buffer()
+
     def close(self) -> None:
         if self._exclusive and self._port.is_open:
             _set_exclusive(self._port, False)
@@ -196,6 +204,11 @@ def open_transport(cfg: PortConfig, budget_s: float | None = None) -> Transport:
         return DemoDevice()
     if cfg.connection != "serial":
         return _open_network(cfg, budget_s)
+    return open_serial(cfg)
+
+
+def open_serial(cfg: PortConfig) -> SerialxTransport:
+    """Open the serial port `cfg` describes: at once, or fail."""
     assert cfg.port is not None
     where = resolve(cfg.port)
     # serialx types Serial as its abstract base; at run time it is this platform's class.

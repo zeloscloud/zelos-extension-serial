@@ -317,7 +317,34 @@ On Windows, paths compare without regard to case or a `\\.\` prefix.
 A new port takes the device's product name as its Name, kept unique; a device that reports no product name gets the default name.
 When there are no ports and no USB serial devices, it adds a `demo` port.
 
-It returns one of these messages: `Added 1 serial device.` (or `Added <n> serial devices.`), `No new USB serial devices found.` or `No USB serial devices found; added the demo device.`
+Auto-configure sets each port it adds to the baud its device prints at.
+It opens each new device once and writes nothing to it.
+The port opens as the extension opens one, with DTR and RTS on, so a board that resets when the extension starts, such as an Arduino, resets here too.
+Ports already in the config are not opened.
+
+It tries 115200, 9600, 57600, 38400, 19200, 230400, 460800 and 921600 baud, in that order.
+At each baud it listens for 1 s, or until 1024 bytes arrive, and takes the first baud whose bytes read as text: at least one whole line, and at least 90% printable characters, line ends and colour codes.
+It listens to all new devices at once and stops after 9 s, so it ends within about 10 s however many devices there are.
+
+A device whose baud is not found keeps the default, 115200, and its port gets no `baud`:
+
+| Reason | Usual cause |
+|---|---|
+| `no data arrived` | The device prints only when asked, prints less often than once a second, or is not wired. An ST-LINK V3 bridge at a wrong baud delivers no bytes at all, so this also covers a device at a baud not in the list. |
+| `no baud tried gave readable text` | The device prints a binary protocol, or at a baud not in the list, such as 4800 or 250000. |
+| `it is in use by another program, or access was denied` | Another program holds the port with a lock. Close it and run Auto-configure again, or set **Baud** by hand. |
+| `permission to open it was denied` | The agent's user may not open the device; see [Health](#health). |
+| `it cannot be opened (<error>)`, `it cannot be read (<error>)` | The open or a read failed, such as when the device was unplugged. |
+| `it did not answer within 9 s` | The driver did not return from the open in time. |
+
+It returns one of these messages:
+
+- `Added 1 serial device at 9600 baud.`
+- `Added 1 serial device; <reason>, so it uses 115200.`
+- `Added <n> serial devices: <port> at 9600 baud; <port>: <reason>, so it uses 115200.`, where each `<port>` is the new port's Name, else its Port.
+- `No new USB serial devices found.`
+- `No USB serial devices found; added the demo device.`
+
 Zelos 26.0.8 sends no config to it.
 There it returns only the devices it finds (or the demo port), which replace the ports in the form, and the app does not show the message.
 

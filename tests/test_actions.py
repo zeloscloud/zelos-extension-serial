@@ -1,6 +1,7 @@
 """The actions, run the way the agent runs them: through the SDK's own validation and execution."""
 
 import concurrent.futures
+import errno
 import inspect
 import json
 import subprocess
@@ -14,8 +15,8 @@ import pytest
 import serialx
 from zelos_sdk.actions import ActionExecutionError, ValidationError
 
-from tests.conftest import FakeTransport, Recording, listed_port, run, wait_until
-from zelos_extension_serial import actions, config, discovery, transport, worker
+from tests.conftest import Board, FakeTransport, Recording, listed_port, run, wait_until
+from zelos_extension_serial import actions, baud, config, discovery, transport, worker
 from zelos_extension_serial.emitter import Emitter
 from zelos_extension_serial.transport import open_transport
 from zelos_extension_serial.worker import PortWorker
@@ -100,11 +101,15 @@ def test_python_defaults_equal_the_form_defaults() -> None:
 def devices(
     listing: list[serialx.SerialPortInfo], monkeypatch: pytest.MonkeyPatch
 ) -> Iterator[list[serialx.SerialPortInfo]]:
-    """What serialx lists; opening any port, or starting any worker, fails the test."""
+    """What serialx lists; opening any port, or starting any worker, fails the test.
+
+    Auto-configure hears nothing from the devices it adds; the `boards` tests open them.
+    """
 
     def refuse(*_args: Any, **_kwargs: Any) -> Any:
         raise AssertionError("a standalone action opened a port")
 
+    monkeypatch.setattr(baud, "detect", lambda cfgs: [SILENT] * len(cfgs))
     monkeypatch.setattr(serialx, "Serial", refuse)
     monkeypatch.setattr(serialx, "serial_for_url", refuse)
     monkeypatch.setattr(transport, "open_transport", refuse)
@@ -114,6 +119,7 @@ def devices(
     assert threading.active_count() == threads
 
 
+SILENT = baud.Heard(None, "no data arrived")
 FT232R = listed_port("/dev/ttyUSB0", 0x0403, 0x6001, "A50285BI", "FTDI", "FT232R USB UART")
 
 
@@ -294,7 +300,10 @@ def test_auto_config_without_a_config_adds_one_port_per_usb_device(
                 {"connection": "serial", "port": "/dev/ttyUSB1", "name": "FT232R USB UART_2"},
             ]
         },
-        "message": "Added 3 serial devices.",
+        "message": "Added 3 serial devices: "
+        "usb:2341:0043:75735303: no data arrived, so it uses 115200; "
+        "FT232R USB UART: no data arrived, so it uses 115200; "
+        "FT232R USB UART_2: no data arrived, so it uses 115200.",
     }
     path = tmp_path / "config.json"
     path.write_text(json.dumps(answer["config"]))
@@ -322,7 +331,7 @@ def test_auto_config_keeps_every_port_and_adds_only_new_devices(
                 {"connection": "serial", "port": "usb:0403:6001:B50285BI"},
             ]
         },
-        "message": "Added 1 serial device.",
+        "message": "Added 1 serial device; no data arrived, so it uses 115200.",
     }
 
 
@@ -414,7 +423,7 @@ def test_auto_config_ignores_a_port_field_left_on_a_network_entry(
     assert answer["config"]["ports"][1:] == [
         {"connection": "serial", "port": "usb:0403:6001:A50285BI", "name": "FT232R USB UART"}
     ]
-    assert answer["message"] == "Added 1 serial device."
+    assert answer["message"] == "Added 1 serial device; no data arrived, so it uses 115200."
 
 
 def test_auto_config_names_new_ports_apart_from_configured_names(
@@ -474,6 +483,88 @@ def test_auto_config_with_ports_and_no_device_changes_nothing(
         "config": {"ports": existing},
         "message": "No new USB serial devices found.",
     }
+
+
+def test_auto_config_sets_the_baud_each_new_device_prints_at(
+    listing: list[serialx.SerialPortInfo], boards: dict[str, Board], quick: None, tmp_path: Path
+) -> None:
+    listing.extend([FT232R, ACM, listed_port("/dev/ttyUSB1", 0x0403, 0x6001, "B50285BI")])
+    boards.update(
+        {
+            "/dev/ttyUSB0": Board(baud=9600),
+            "/dev/ttyACM0": Board(),
+            "/dev/ttyUSB1": Board(baud=57600),
+        }
+    )
+    existing = [{"connection": "serial", "port": "usb:0403:6001:B50285BI", "name": "dut"}]
+    threads = threading.active_count()
+
+    answer = run("auto_config", config={"ports": existing})
+
+    assert answer == {
+        "status": "success",
+        "config": {
+            "ports": [
+                *existing,
+                {"connection": "serial", "port": "usb:2341:0043:75735303"},
+                {
+                    "connection": "serial",
+                    "port": "usb:0403:6001:A50285BI",
+                    "name": "FT232R USB UART",
+                    "baud": 9600,
+                },
+            ]
+        },
+        "message": "Added 2 serial devices: "
+        "usb:2341:0043:75735303: no data arrived, so it uses 115200; "
+        "FT232R USB UART at 9600 baud.",
+    }
+    # A configured port is never opened, and an added one is written nothing.
+    assert boards["/dev/ttyUSB1"].opened == []
+    assert [board.writes for board in boards.values()] == [[], [], []]
+    assert threading.active_count() == threads
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(answer["config"]))
+    assert [port.baud for port in config.load(path).ports] == [115200, 115200, 9600]
+
+
+@pytest.mark.parametrize(
+    ("board", "found", "message"),
+    [
+        (Board(baud=9600), 9600, "Added 1 serial device at 9600 baud."),
+        (Board(baud=115200), 115200, "Added 1 serial device at 115200 baud."),
+        (Board(), None, "Added 1 serial device; no data arrived, so it uses 115200."),
+        (
+            Board(baud=1200),
+            None,
+            "Added 1 serial device; no baud tried gave readable text, so it uses 115200.",
+        ),
+        (
+            Board(open_error=OSError(errno.EBUSY, "already locked")),
+            None,
+            "Added 1 serial device; it is in use by another program, or access was denied, "
+            "so it uses 115200.",
+        ),
+    ],
+    ids=["9600", "115200", "silent", "noise", "busy"],
+)
+def test_auto_config_says_the_baud_it_found_or_why_it_found_none(
+    listing: list[serialx.SerialPortInfo],
+    boards: dict[str, Board],
+    quick: None,
+    board: Board,
+    found: int | None,
+    message: str,
+) -> None:
+    listing.append(FT232R)
+    boards["/dev/ttyUSB0"] = board
+
+    answer = run("auto_config")
+
+    assert answer["message"] == message
+    # Only a baud that was heard is written; the default needs none.
+    [port] = answer["config"]["ports"]
+    assert port.get("baud") == found
 
 
 @pytest.mark.parametrize(

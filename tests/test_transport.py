@@ -177,6 +177,39 @@ def test_a_serial_write_has_time_for_its_bytes_at_the_baud(
     assert writes[0]["timeout"] == pytest.approx(1.0 + 2000 * 10 / 9600, abs=0.05)
 
 
+class RebaudSerial(SlowSerial):
+    """Takes a new baud, and records it and the flush after it."""
+
+    def __init__(self, *args: Any, baudrate: int, **kwargs: Any) -> None:
+        super().__init__(*args, baudrate=baudrate, **kwargs)
+        self.baudrate = baudrate
+
+    def reconfigure_port(self, *, baudrate: int) -> None:
+        self.calls.append(("reconfigure_port", {"baudrate": baudrate}))
+        self.baudrate = baudrate
+
+    def reset_read_buffer(self) -> None:
+        self.calls.append(("reset_read_buffer", {}))
+
+
+def test_a_new_baud_drops_what_arrived_and_sets_the_write_time(
+    made: list[RecordingSerial], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(serialx, "Serial", RebaudSerial)
+    port = open_transport(SERIAL)
+    assert isinstance(port, SerialxTransport)
+
+    port.set_baud(9600)
+    port.write(b"x" * 2000)
+
+    assert made[0].calls[2:4] == [
+        ("reconfigure_port", {"baudrate": 9600}),
+        ("reset_read_buffer", {}),
+    ]
+    writes = [args for name, args in made[0].calls if name == "write"]
+    assert writes[0]["timeout"] == pytest.approx(1.0 + 2000 * 10 / 9600, abs=0.05)
+
+
 @pytest.mark.parametrize(
     ("framing", "bits"),
     [
@@ -494,17 +527,6 @@ def test_tcp_keeps_the_link_alive(server: socket.socket) -> None:
             assert sock.getsockopt(socket.IPPROTO_TCP, socket.TCP_USER_TIMEOUT) == 30_000
     finally:
         port.close()
-
-
-@pytest.fixture
-def pty() -> Iterator[tuple[int, str]]:
-    """A pseudo-terminal: its controller's fd and the path a port opens."""
-    if sys.platform == "win32":
-        pytest.skip("pseudo-terminals are POSIX only")
-    controller, device = os.openpty()
-    yield controller, os.ttyname(device)
-    os.close(controller)
-    os.close(device)
 
 
 def test_serial_reads_and_times_out_on_a_pty(pty: tuple[int, str]) -> None:
