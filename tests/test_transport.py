@@ -414,16 +414,17 @@ def test_a_link_local_ipv6_host_keeps_its_zone() -> None:
 
 
 class SlowSocket:
-    """A connection that takes its whole connect timeout, then fails."""
+    """A connection that takes its whole connect timeout on the test's clock, then fails."""
 
     timeouts: list[float] = []
+    now = 0.0
 
     def __init__(self, url: str, connect_timeout: float, write_timeout: float) -> None:
         self.connect_timeout = connect_timeout
 
     def open(self) -> None:
         SlowSocket.timeouts.append(self.connect_timeout)
-        time.sleep(self.connect_timeout)
+        SlowSocket.now += self.connect_timeout
         raise TimeoutError("timed out")
 
 
@@ -433,18 +434,20 @@ def test_a_network_open_ends_within_its_budget(
 ) -> None:
     monkeypatch.setattr(transport, "CONNECT_TIMEOUT_S", 0.3)
     monkeypatch.setattr(transport, "SocketSerial", SlowSocket)
+    # A fake clock: on a loaded runner a real 0.3 s sleep can take 0.35 s,
+    # and the budget left changes with it.
+    monkeypatch.setattr(time, "monotonic", lambda: SlowSocket.now)
     SlowSocket.timeouts = []
+    SlowSocket.now = 0.0
     lookups["bench.local"] = [(socket.AF_INET, f"192.0.2.{n}") for n in range(1, 5)]
-    started = time.monotonic()
     with pytest.raises(TimeoutError):
         transport._open_network(port_config(host="bench.local", tcp_port=4001), budget_s)
-    elapsed = time.monotonic() - started
     # Each address gets the connect timeout, or what is left of the budget if that is less.
     assert len(SlowSocket.timeouts) == tried
     assert SlowSocket.timeouts[0] == pytest.approx(0.3)
     if budget_s is not None:
-        assert SlowSocket.timeouts[1] == pytest.approx(0.2, abs=0.05)
-        assert elapsed < budget_s + 0.1
+        assert SlowSocket.timeouts[1] == pytest.approx(0.2)
+        assert SlowSocket.now == pytest.approx(budget_s)
 
 
 def test_an_unknown_host_is_unresolved(lookups: dict[str, Any]) -> None:
