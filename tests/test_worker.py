@@ -298,12 +298,10 @@ def test_prompts_and_redraws_are_counted_not_logged(rigs) -> None:
     rig.clock.ns += 100 * MS
     wait_until(lambda: rig.ask("state")["counters"]["prompts"] == 3)
     assert rig.emitter.messages() == ["dcdc: rail=13.65V", "dcdc: rail=13.65V"]
+    # Sample has the lines as the log has them; hex has the bytes, prompts and all.
     assert rig.ask("sample", lines=5)["lines"] == [
-        "uart:~$ ",
         "[00:00:01.000,000] <inf> dcdc: rail=13.65V",
-        "uart:~$ dcdc li",
         "[00:00:01.020,000] <inf> dcdc: rail=13.65V",
-        "# ",
     ]
 
 
@@ -915,6 +913,24 @@ def test_sample_lines_and_hex_chunks(rigs) -> None:
     assert rig.ask("sample", lines=2) == {"lines": ["b", "c"]}
     assert rig.ask("sample", lines=50) == {"lines": ["a", "b", "c"]}
     assert rig.ask("sample", lines=2, hex=True) == {"chunks": ["620d0a", "630d0a"]}
+
+
+def test_sample_leaves_out_prompts_and_echoes_as_the_log_does(rigs) -> None:
+    # A Zephyr shell redraws its prompt around every log line, and echoes a command.
+    reply = b"kernel uptime\r\nUptime: 7 ms\r\n" + PROMPT + ERASE + zephyr(1.04)
+    chunks = [PROMPT + ERASE + zephyr(1.0), PROMPT + ERASE + zephyr(1.02)]
+    rig = rigs(Port(chunks, replies={b"kernel uptime\n": [reply]}))
+    wait_until(lambda: len(rig.emitter.lines()) == 2)
+    rig.ask("command", text="kernel uptime")
+    wait_until(lambda: len(rig.emitter.lines()) == 4)
+    assert rig.ask("sample", lines=50) == {
+        "lines": [
+            "[00:00:01.000,000] <inf> dcdc: rail=13.65V",
+            "[00:00:01.020,000] <inf> dcdc: rail=13.65V",
+            "Uptime: 7 ms",
+            "[00:00:01.040,000] <inf> dcdc: rail=13.65V",
+        ]
+    }
 
 
 def test_sample_asked_for_more_than_is_held_returns_all(rigs) -> None:

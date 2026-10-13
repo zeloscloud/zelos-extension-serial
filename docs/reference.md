@@ -378,7 +378,7 @@ Get State returns:
 ### Sample
 
 Sample takes `lines`, from 1 to 1000, default 50.
-It returns `{"lines": [...]}`, the last lines received, prompts included.
+It returns `{"lines": [...]}`, the last lines as the log has them: without prompts or the echo of sent text. With `hex`, it returns the raw reads, prompts included.
 With `hex`, it returns `{"chunks": [...]}`, the last raw reads as hex strings.
 
 ### Errors

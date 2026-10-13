@@ -38,7 +38,8 @@ def test_demo_port_through_the_actions(trace_file: Recording) -> None:
             ("demo/dcdc", "temp", "C", "zephyr+kv"),
         ]
         sampled = run("sample", port="demo", lines=1000)["lines"]
-        assert {"uart:~$ ", "limit set to 7.5 A"} <= set(sampled)
+        assert "limit set to 7.5 A" in sampled
+        assert "uart:~$ " not in sampled
 
         assert run("reset", port="demo") == {"ok": True}
         advance(app, RESTARTABLE)
