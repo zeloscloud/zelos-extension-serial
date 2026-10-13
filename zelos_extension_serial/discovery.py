@@ -13,6 +13,7 @@ import serialx
 logger = logging.getLogger(__name__)
 
 _WINDOWS = sys.platform == "win32"
+_MACOS = sys.platform == "darwin"
 # Device IDs already warned about: resolve() runs on every reconnect.
 _warned_duplicates: set[str] = set()
 # On Windows the product is the driver's name for the port, which ends in the port:
@@ -126,10 +127,18 @@ def present(port_field: str) -> bool:
 
 def same_port(a: str, b: str) -> bool:
     """Whether two paths name one port."""
-    if not _WINDOWS:
-        return a == b
-    # Windows opens a COM port by any case, and serialx adds the \\.\ prefix itself.
-    return _windows_key(a) == _windows_key(b)
+    if _WINDOWS:
+        # Windows opens a COM port by any case, and serialx adds the \\.\ prefix itself.
+        return _windows_key(a) == _windows_key(b)
+    if _MACOS:
+        # macOS lists only a device's call-out node, /dev/cu.X; /dev/tty.X is the same device.
+        return _macos_key(a) == _macos_key(b)
+    return a == b
+
+
+def _macos_key(path: str) -> str:
+    tty = "/dev/tty."
+    return "/dev/cu." + path.removeprefix(tty) if path.startswith(tty) else path
 
 
 def _windows_key(path: str) -> str:

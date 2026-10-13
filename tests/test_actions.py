@@ -367,6 +367,20 @@ def test_auto_config_adds_a_second_device_with_a_configured_id(
     ]
 
 
+def test_auto_config_treats_a_macos_tty_path_as_its_listed_cu_device(
+    devices: list[serialx.SerialPortInfo], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(discovery, "_WINDOWS", False)
+    monkeypatch.setattr(discovery, "_MACOS", True)
+    # macOS lists only the call-out node.
+    devices.append(CP2102_A)
+    existing = [{"connection": "serial", "port": "/dev/tty.usbserial-0001"}]
+
+    answer = run("auto_config", config={"ports": existing})
+
+    assert answer["message"] == "No new USB serial devices found."
+
+
 def test_auto_config_matches_a_configured_path_as_discovery_does(
     devices: list[serialx.SerialPortInfo], monkeypatch: pytest.MonkeyPatch
 ) -> None:

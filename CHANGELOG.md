@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- On macOS, treat a Port field of `/dev/tty.X` as the listed device `/dev/cu.X`. Auto-configure added a second port for a board already configured by its `tty` path.
 - Report an RFC 2217 server that negotiates but never acknowledges a port setting as `Cannot open <where>: the RFC 2217 server did not acknowledge the port settings.` It was reported as a server that is not running.
 - Connect to a link-local IPv6 address, typed with its zone or returned for a `.local` name. The zone was dropped, so the connect failed with "No route to host". Report a malformed host name, such as `bench..local`, as one that cannot be resolved, and keep trying; it was reported as an unsupported setting, and the port stopped.
 - Record the values of a module whose event name, `<port>/<module>`, would pass the trace's 128-byte limit, such as a 64-character module on a 64-character port, or a non-ASCII module. Its rows were dropped and every flush counted an error. Cut a default port name at 64 bytes: a long non-ASCII port path or host made `<port>/log` too long, and the extension crashed at start.

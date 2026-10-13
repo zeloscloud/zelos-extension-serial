@@ -306,6 +306,7 @@ With no port to list, it returns the message `No serial devices found. Type a pa
 ### Auto-configure
 
 Auto-configure treats a device as used when the **Port** field of a `serial` port holds its device ID or one of its paths.
+On macOS, `/dev/tty.X` and the listed `/dev/cu.X` are one device's paths.
 A `port` key left on a TCP, RFC 2217 or demo entry does not count.
 On Windows, paths compare without regard to case or a `\\.\` prefix.
 
