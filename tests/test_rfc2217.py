@@ -18,7 +18,7 @@ from serialx.platforms.serial_rfc2217 import Rfc2217, RFC2217Serial
 from tests.conftest import port_config, read
 from zelos_extension_serial import transport
 from zelos_extension_serial.config import PortConfig
-from zelos_extension_serial.rfc2217 import FixedRFC2217Serial, NoRfc2217
+from zelos_extension_serial.rfc2217 import FixedRFC2217Serial, NoRfc2217, SettingsNotAcked
 from zelos_extension_serial.transport import Transport, classify, open_transport
 
 # Telnet bytes and RFC 2217 command ids, as they appear on the wire.
@@ -200,7 +200,7 @@ def test_open_url_brackets_an_ipv6_host(monkeypatch: pytest.MonkeyPatch) -> None
 
 @pytest.mark.parametrize(
     ("silence", "raised_type"),
-    [({"telnet": False}, NoRfc2217), ({"unacked": SET_BAUDRATE}, TimeoutError)],
+    [({"telnet": False}, NoRfc2217), ({"unacked": SET_BAUDRATE}, SettingsNotAcked)],
 )
 def test_an_unanswered_wait_ends_at_the_deadline_while_the_device_prints(
     ser2net: Callable[..., FakeSer2net], silence: dict[str, Any], raised_type: type
@@ -240,6 +240,16 @@ def test_a_server_without_rfc2217_is_told_apart_from_one_that_is_down(
         open_transport(dataclasses.replace(RFC2217, tcp_port=ser2net(**server).port))
     assert time.monotonic() - started < 1.5
     assert classify(caught.value) == "no_rfc2217"
+
+
+def test_a_server_that_never_acks_a_setting_is_not_reported_as_down(
+    ser2net: Callable[..., FakeSer2net], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(transport, "CONNECT_TIMEOUT_S", 0.3)
+    with pytest.raises(SettingsNotAcked) as caught:
+        open_transport(dataclasses.replace(RFC2217, tcp_port=ser2net(unacked=SET_BAUDRATE).port))
+    # "other": the health names the error instead of telling the user to start the server.
+    assert classify(caught.value) == "other"
 
 
 def test_option_negotiation_goes_quiet_once_agreed(ser2net: Callable[..., FakeSer2net]) -> None:

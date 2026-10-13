@@ -5,6 +5,7 @@ from collections.abc import Callable
 from typing import TypeVar
 
 from serialx import SerialException
+from serialx.common import PortSettingsUpdate
 from serialx.platforms.serial_rfc2217 import RFC2217Serial
 from serialx.platforms.serial_rfc2217.types import (
     Rfc2217Command,
@@ -20,6 +21,10 @@ class NoRfc2217(Exception):
     """The server accepted the connection but does not negotiate RFC 2217."""
 
 
+class SettingsNotAcked(Exception):
+    """The server negotiated RFC 2217 but did not acknowledge a port setting."""
+
+
 class FixedRFC2217Serial(RFC2217Serial):
     """serialx's sync RFC 2217 client, fixed to work with ser2net 4.3.4 to 4.6.7."""
 
@@ -30,6 +35,15 @@ class FixedRFC2217Serial(RFC2217Serial):
             super()._negotiate()
         except (SerialException, TimeoutError) as e:
             raise NoRfc2217("the server does not answer RFC 2217") from e
+
+    # Not an OSError: the server is up and answered, so this is no failed connect.
+    def _reconfigure_port(self, update: PortSettingsUpdate) -> None:
+        try:
+            super()._reconfigure_port(update)
+        except TimeoutError as e:
+            raise SettingsNotAcked(
+                "the RFC 2217 server did not acknowledge the port settings"
+            ) from e
 
     # The handshake's WILL/DO waits restart serialx's timer too while ser2net 4.3.4 and 4.6.0
     # stream device data. `timeout` is unused: serialx only ever passes the connect timeout.
