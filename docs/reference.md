@@ -10,6 +10,7 @@ A port without a Name takes a name from its config, as the README's [What it rec
 The name does not depend on which devices are plugged in, so data from one board always lands under one name.
 Names compare without regard to case.
 Two ports that would get the same name get `_2`, `_3` and so on; two Names you set that differ only in case are a config error.
+Spaces at either end of a Name or the Prefix are dropped, since the trace refuses a name that starts with one.
 
 ### Notes and sent text
 
@@ -216,7 +217,7 @@ These go in the top-level `advanced` object, titled **Advanced (all ports)** in 
 
 | Key | Title | Default | Values |
 |---|---|---|---|
-| `prefix` | Prefix | `Serial` | letters, digits, space, `_` and `-` |
+| `prefix` | Prefix | `Serial` | letters, digits, space, `_` and `-`; at most 128 characters |
 | `time_source` | Time source | `auto` | auto, host |
 | `log_level` | Log level | `INFO` | DEBUG, INFO, WARNING, ERROR |
 

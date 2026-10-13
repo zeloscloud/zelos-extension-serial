@@ -66,7 +66,7 @@
     "advanced": {
       "type": "object", "title": "Advanced (all ports)", "ui:options": { "collapsed": true }, "additionalProperties": false, "default": {},
       "properties": {
-        "prefix": { "type": "string", "title": "Prefix", "default": "Serial", "pattern": "^[A-Za-z0-9 _-]+$", "description": "The trace source every port publishes under." },
+        "prefix": { "type": "string", "title": "Prefix", "default": "Serial", "pattern": "^[A-Za-z0-9 _-]*[A-Za-z0-9_-][A-Za-z0-9 _-]*$", "maxLength": 128, "description": "The trace source every port publishes under." },
         "time_source": { "type": "string", "title": "Time source", "enum": ["auto", "host"], "default": "auto", "description": "Auto uses the device clock when a line carries one." },
         "log_level": { "type": "string", "title": "Log level", "enum": ["DEBUG", "INFO", "WARNING", "ERROR"], "default": "INFO" }
       }
