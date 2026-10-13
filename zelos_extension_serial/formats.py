@@ -404,8 +404,12 @@ def is_prompt(text: str, custom: re.Pattern[str] | None = None) -> bool:
 
 
 def is_prompt_redraw(line: Line, custom: re.Pattern[str] | None = None) -> bool:
-    """True when a partial line is a prompt followed by more text that is not a log line."""
-    if not line.partial:
+    """True when an erased line is a prompt followed by more text that is not a log line.
+
+    Only an erase: a line released by a pause or a close, such as `Test #3: erasing flash`, can
+    start like a prompt and is still the device's output.
+    """
+    if not line.erased:
         return False
     m = (custom or _PROMPT).match(line.text)
     return (

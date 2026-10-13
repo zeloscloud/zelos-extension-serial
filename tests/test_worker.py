@@ -426,6 +426,27 @@ def test_the_rest_of_a_line_split_by_a_pause_is_logged_without_values(rigs) -> N
     ]
 
 
+@pytest.mark.parametrize("release", ["pause", "close"])
+@pytest.mark.parametrize("text", ["Test #3: erasing flash", "Attempt #2 failed"])
+def test_a_last_line_that_starts_like_a_prompt_is_logged(rigs, release: str, text: str) -> None:
+    # `Test #` matches the prompt `pi@raspberrypi:~ $`; only an erase makes it a redrawn prompt.
+    pending = text.encode()
+    rig = rigs(Port([BANNER, pending]))
+    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + pending))
+    if release == "pause":
+        rig.clock.ns += 100 * MS
+    else:
+        rig.ask("release")
+    rig.settle()
+    assert text in rig.emitter.messages()
+    assert rig.ask("state")["counters"]["prompts"] == 0
+
+
+def test_a_line_that_starts_like_a_prompt_keeps_its_first_half_over_a_pause(rigs) -> None:
+    lines = paused(rigs, b"Test #3: erasing flash", b" ... done\r\n")
+    assert [p.message for p in lines] == ["Test #3: erasing flash", " ... done"]
+
+
 def test_a_line_after_a_paused_prompt_keeps_its_values(rigs) -> None:
     lines = paused(rigs, b"esp32> ", b"temp=35.8C\r\n")
     assert [(p.message, [v.name for v in p.values]) for p in lines] == [("temp=35.8C", ["temp"])]

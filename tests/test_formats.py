@@ -214,7 +214,7 @@ def test_repeat_tracker_remembers_each_label() -> None:
 
 
 @pytest.mark.parametrize(
-    ("text", "partial", "redraw"),
+    ("text", "erased", "redraw"),
     [
         ("uart:~$ dcdc li", True, True),
         ("uart:~$ dcdc li", False, False),
@@ -227,10 +227,12 @@ def test_repeat_tracker_remembers_each_label() -> None:
         ("pi@raspberrypi:~ $ ls", True, True),
         ("uart:~$ [00:00:19.024,000] <inf> pump: rpm=10", True, False),
         ("# [   12.345678] eth0: li", True, False),
+        ("Test #3: erasing flash", True, True),
+        ("Test #3: erasing flash", False, False),
     ],
 )
-def test_prompt_redraw(text: str, partial: bool, redraw: bool) -> None:
-    assert is_prompt_redraw(Line(text, 0, None, partial, False)) is redraw
+def test_prompt_redraw(text: str, erased: bool, redraw: bool) -> None:
+    assert is_prompt_redraw(Line(text, 0, None, True, False, erased)) is redraw
 
 
 def _prompt_check_seconds(*texts: str) -> list[float]:
@@ -240,7 +242,7 @@ def _prompt_check_seconds(*texts: str) -> list[float]:
         for i, text in enumerate(texts):
             start = time.perf_counter()
             is_prompt(text)
-            is_prompt_redraw(Line(text, 0, None, True, False))
+            is_prompt_redraw(Line(text, 0, None, True, False, True))
             best[i] = min(best[i], time.perf_counter() - start)
     return best
 
@@ -291,8 +293,8 @@ def test_custom_prompt_replaces_the_default() -> None:
     custom = re.compile(r"nsh> ")
     assert is_prompt("nsh> ", custom)
     assert not is_prompt("uart:~$ ", custom)
-    assert is_prompt_redraw(Line("nsh> help", 0, None, True, False), custom)
-    assert not is_prompt_redraw(Line("uart:~$ help", 0, None, True, False), custom)
+    assert is_prompt_redraw(Line("nsh> help", 0, None, True, False, True), custom)
+    assert not is_prompt_redraw(Line("uart:~$ help", 0, None, True, False, True), custom)
 
 
 @pytest.mark.parametrize(
