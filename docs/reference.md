@@ -412,7 +412,7 @@ Get State returns one health sentence. The first match wins.
 | `Cannot resolve <host>. Check the host name.` | The host name did not resolve, or not within 2 s, or is not a valid name, such as `bench..local`. |
 | `<where> accepted the connection but does not answer RFC 2217. Is it a raw TCP port? Use tcp instead.` | Set **Connection** to `tcp`, or point it at an RFC 2217 server. |
 | `Cannot connect to <where>. Check that the server is running.` | Start the TCP or RFC 2217 server, and check the host and port. |
-| `Cannot open <where>: <error>.` | The open failed for another reason, which the error names. The port keeps trying. |
+| `Cannot open <where>: <error>.` | The open failed for another reason, which the error names, such as an RFC 2217 server that did not acknowledge the port settings. The port keeps trying. |
 | `Released. Run Acquire Port to take the port back.` | Run Acquire Port. |
 | `Disconnected from <where>. Waiting for it to come back.` | Plug the device back in, or restart the server. |
 | `Connecting to <where>.` | Wait. |
