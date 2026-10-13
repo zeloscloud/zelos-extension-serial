@@ -23,6 +23,7 @@ from .formats import (
     ShapeTracker,
     is_prompt,
     is_prompt_redraw,
+    is_teleplot,
     log_after_prompt,
     parse,
 )
@@ -392,7 +393,13 @@ class PortWorker(threading.Thread):
         if parsed.values and (partial or not self._cfg.values):
             parsed = dataclasses.replace(parsed, values=())
         command = self._command
-        if command is not None and not parsed.prefixed and parsed.rule != "zephyr-dropped":
+        # Log lines and Teleplot points are the device's background output, not the reply.
+        if (
+            command is not None
+            and not parsed.prefixed
+            and parsed.rule != "zephyr-dropped"
+            and not is_teleplot(line.text)
+        ):
             command.heard = True
             command.reply.append(line.text)
         t = line.host_ns

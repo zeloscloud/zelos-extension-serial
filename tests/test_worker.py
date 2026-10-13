@@ -1020,6 +1020,13 @@ def test_command_reply_excludes_log_lines_and_the_dropped_notice(rigs) -> None:
     assert "--- 3 messages dropped ---" in rig.emitter.messages()
 
 
+def test_command_reply_excludes_teleplot_points(rigs) -> None:
+    reply = [b">phase:5.046\r\n", b"limit: 4.5 A\r\n", b">rpm:1:1042;2:1043\r\n"]
+    rig = rigs(zephyr_shell(b"dcdc limit get\n", *reply))
+    assert rig.ask("command", text="dcdc limit get")["reply"] == ["limit: 4.5 A"]
+    assert ">phase:5.046" in rig.emitter.messages()
+
+
 def test_command_ends_300_ms_after_its_reply_goes_quiet(rigs) -> None:
     port = Port(replies={b"ls\n": [b"ls\r\n"]})
     rig = rigs(port)

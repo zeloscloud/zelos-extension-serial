@@ -393,6 +393,11 @@ def parse(text: str, colour: str | None, shape: ShapeTracker, repeat: RepeatTrac
     return replace(head, values=values, rule=f"{head.rule}+{habit}")
 
 
+def is_teleplot(text: str) -> bool:
+    """True when the whole line is a Teleplot point with a number, such as `>phase:2.6`."""
+    return _TELEPLOT.fullmatch(text.strip()) is not None
+
+
 def is_prompt(text: str, custom: re.Pattern[str] | None = None) -> bool:
     """True when the whole line is a shell prompt."""
     return (custom or _PROMPT).fullmatch(text) is not None
