@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Return lines from Sample as the log has them, without prompts or the echo of sent text. A Zephyr shell redraws its prompt around every log line, so the last lines were often all `uart:~$`. Sample with `hex` still returns the raw reads.
 - Say in Get State's health when names printed after a module's signals were set up are not recorded, and that restarting the extension includes them. `Serial/log` names each one, as before.
 
 ## [0.2.0] - 2026-10-12

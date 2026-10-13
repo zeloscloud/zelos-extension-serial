@@ -377,7 +377,6 @@ class PortWorker(threading.Thread):
             self._unexpected(e)
 
     def _on_line(self, line: Line) -> None:
-        self._lines.append(line.text)
         # A piece of a long line is never a whole prompt or echo.
         if not line.cut:
             if self._prompt_or_echo(line):
@@ -388,6 +387,8 @@ class PortWorker(threading.Thread):
             if (log := log_after_prompt(line.text, self._cfg.prompt)) is not None:
                 self._on_prompt(whole=True)
                 line = dataclasses.replace(line, text=log)
+        # Sample returns lines as the log has them: no prompts, no echoes.
+        self._lines.append(line.text)
         parsed = parse(line.text, line.colour, self._shape, self._repeat)
         mid_line, self._mid_line = self._mid_line, line.partial
         # Values only from whole lines: a pause or a cut can split `rail=13.64V` into `rail=13.6`,

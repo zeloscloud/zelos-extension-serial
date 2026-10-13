@@ -180,7 +180,7 @@ Leave it out to act on the first configured port.
 | Release Port | `Serial/release` | Closes the port so another program can open it. DTR and RTS stay as they are. | no |
 | Acquire Port | `Serial/acquire` | Opens a released port again. | no |
 | Get State | `Serial/get_state` | Returns the port's state, health, clock, counters and signals. | yes |
-| Sample | `Serial/sample` | Returns the last lines the port received, or its last raw reads as hex. | yes |
+| Sample | `Serial/sample` | Returns the last lines the port logged, or its last raw reads as hex. | yes |
 
 Run Command's reply ends at the next prompt, after 300 ms without bytes once a reply line has arrived, or at `timeout_s` (default 2 s):
 
