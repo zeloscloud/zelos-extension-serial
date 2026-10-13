@@ -1007,6 +1007,16 @@ def test_command_ends_at_a_prompt_run_into_a_log_line(rigs) -> None:
     assert rig.ask("state")["counters"]["echoes"] == 1
 
 
+def test_command_ends_at_a_prompt_run_into_a_teleplot_point(rigs) -> None:
+    # As an ESP32 printed it: the prompt, then a 10 Hz point with no line end between them.
+    after = b"limit get\r\nlimit 2.0 A\r\nesp32> >phase:0.245\r\n"
+    rig = rigs(Port(replies={b"limit get\n": [after]}))
+    reply = rig.ask("command", text="limit get")
+    assert (reply["reply"], reply["ended_by"]) == (["limit 2.0 A"], "prompt")
+    wait_until(lambda: ">phase:0.245" in rig.emitter.messages())
+    assert [v.name for v in rig.emitter.lines()[-1].values] == ["phase"]
+
+
 def test_command_ignores_the_prompt_erased_before_its_echo(rigs) -> None:
     after = ERASE + zephyr(1.0) + PROMPT + b"dcdc limit get\r\nlimit: 4.5 A\r\n" + PROMPT + ERASE
     port = Port([PROMPT], replies={b"dcdc limit get\n": [after + zephyr(1.02)]})
