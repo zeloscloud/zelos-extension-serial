@@ -140,6 +140,7 @@ usb:0403:6001:A50285BI
 The ID is `usb:`, the vendor ID and product ID in lower-case hex, and the serial number.
 The operating system assigns the path, such as `COM7` or `/dev/ttyUSB0`, each time the device appears, so the path can change when you replug or add a device.
 The device stores its vendor ID, product ID and serial number, so the ID finds the same device on any USB port.
+When two connected devices share one ID, as two boards with CP2102 bridges often do, the list stores their device nodes, such as `/dev/ttyUSB0`, instead.
 
 The first time the Port list opens after Serial is installed, the agent can take more than 10 s to start it, and the app's list gives up after 10 s.
 Open the list again.

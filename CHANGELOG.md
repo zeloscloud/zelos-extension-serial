@@ -3,6 +3,12 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Store the device node, not the device ID, for two connected devices that share one ID, such as two boards whose CP2102 bridges both report serial `0001`. List Ports offered both boards with the first one's ID, and Auto-configure added two ports that both opened the first board. Auto-configure now also adds a second such board when the first is configured by its ID.
+
 ## [0.1.0] - 2026-10-08
 
 ### Added

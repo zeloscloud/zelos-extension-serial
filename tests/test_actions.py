@@ -148,6 +148,17 @@ def test_list_ports_offers_every_device(devices: list[serialx.SerialPortInfo]) -
     }
 
 
+def test_list_ports_offers_the_path_of_devices_that_share_an_id(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    devices.extend([CP2102_A, CP2102_B])
+
+    assert [c["value"] for c in run("list_ports")["choices"]] == [
+        "/dev/cu.usbserial-0001",
+        "/dev/cu.usbserial-0002",
+    ]
+
+
 def test_list_ports_shows_the_device_node_a_linux_by_id_path_links_to(
     devices: list[serialx.SerialPortInfo],
 ) -> None:
@@ -251,6 +262,9 @@ def test_with_no_ports_the_port_field_has_no_default(monkeypatch: pytest.MonkeyP
 
 
 ACM = listed_port("/dev/ttyACM0", 0x2341, 0x0043, "75735303")
+# Two ESP32 boards whose CP2102 bridges both report serial 0001.
+CP2102_A = listed_port("/dev/cu.usbserial-0001", 0x10C4, 0xEA60, "0001", product="CP2102")
+CP2102_B = listed_port("/dev/cu.usbserial-0002", 0x10C4, 0xEA60, "0001", product="CP2102")
 
 
 def test_auto_config_without_a_config_adds_one_port_per_usb_device(
@@ -310,6 +324,47 @@ def test_auto_config_keeps_every_port_and_adds_only_new_devices(
         },
         "message": "Added 1 serial device.",
     }
+
+
+def test_list_ports_offers_the_device_node_of_linux_devices_that_share_an_id(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    # udev makes one by-id link for both: it points to the device that appeared last.
+    by_id = "/dev/serial/by-id/usb-Silicon_Labs_CP2102_0001-if00-port0"
+    devices.extend(
+        [
+            listed_port(by_id, 0x10C4, 0xEA60, "0001", resolved="/dev/ttyUSB1"),
+            listed_port("/dev/ttyUSB0", 0x10C4, 0xEA60, "0001"),
+        ]
+    )
+
+    assert [c["value"] for c in run("list_ports")["choices"]] == ["/dev/ttyUSB1", "/dev/ttyUSB0"]
+
+
+def test_auto_config_adds_devices_that_share_an_id_by_path(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    devices.extend([CP2102_A, CP2102_B])
+
+    assert run("auto_config")["config"]["ports"] == [
+        {"connection": "serial", "port": "/dev/cu.usbserial-0001", "name": "CP2102"},
+        {"connection": "serial", "port": "/dev/cu.usbserial-0002", "name": "CP2102_2"},
+    ]
+
+
+def test_auto_config_adds_a_second_device_with_a_configured_id(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    devices.extend([CP2102_A, CP2102_B])
+    existing = [{"connection": "serial", "port": "usb:10c4:ea60:0001", "name": "dut"}]
+
+    answer = run("auto_config", config={"ports": existing})
+
+    # The ID opens the first device by path; the second is new.
+    assert answer["config"]["ports"] == [
+        *existing,
+        {"connection": "serial", "port": "/dev/cu.usbserial-0002", "name": "CP2102"},
+    ]
 
 
 def test_auto_config_matches_a_configured_path_as_discovery_does(

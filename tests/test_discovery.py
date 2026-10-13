@@ -129,6 +129,26 @@ def test_duplicate_device_ids_resolve_to_the_first_path_warning_once(
     ]
 
 
+def test_a_shared_device_id_names_only_the_first_device_by_path(
+    listing: list[serialx.SerialPortInfo],
+) -> None:
+    listing += [
+        _listed("/dev/ttyUSB3", 0x0403, 0x6001, "A50285BI"),
+        _listed("/dev/ttyUSB1", 0x0403, 0x6001, "A50285BI"),
+        _listed("/dev/ttyUSB2", 0x0403, 0x6001, "B50285BI"),
+    ]
+    first, other, second = list_ports()
+
+    assert [first.choice, other.choice, second.choice] == [
+        "/dev/ttyUSB1",
+        "usb:0403:6001:B50285BI",
+        "/dev/ttyUSB3",
+    ]
+    assert first.named_by(FTDI)
+    assert not second.named_by(FTDI)
+    assert second.named_by("/dev/ttyUSB3")
+
+
 def test_present_by_device_id(listing: list[serialx.SerialPortInfo]) -> None:
     assert not present(FTDI)
     listing.append(_listed("COM7", 0x0403, 0x6001, "A50285BI"))
