@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Read a unit written with the Greek `μ` (U+03BC), such as `12μA`, as the micro sign. The value was dropped, and in key=value its name went with it.
 - Log a line that starts like a prompt, such as `Test #3: erasing flash`, when a pause or the port closing releases it. Only a line that a shell erases is a redrawn prompt; such a line was dropped, so the last line before a hang was lost.
 - On macOS, treat a Port field of `/dev/tty.X` as the listed device `/dev/cu.X`. Auto-configure added a second port for a board already configured by its `tty` path.
 - Report an RFC 2217 server that negotiates but never acknowledges a port setting as `Cannot open <where>: the RFC 2217 server did not acknowledge the port settings.` It was reported as a server that is not running.

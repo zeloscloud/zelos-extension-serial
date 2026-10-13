@@ -93,7 +93,8 @@ _COLOUR_LEVELS: dict[str | None, _Level] = {"red": "error", "yellow": "warn"}
 _NUMBER = (
     r"[-+]?(?:\d++\.\d*+|\.\d++|0\d{0,2}+(?!\d)|[1-9]\d*+)(?:[eE][-+]?\d++)?(?![xX][0-9A-Fa-f])"
 )
-_UNIT = r"[A-Za-z%°µΩ][A-Za-z%°µΩ²³]{0,7}(?:/[A-Za-z0-9%°µΩ²³/]{1,7})?"
+# Micro is µ (U+00B5) or the Greek μ (U+03BC) that NFKC and Greek keyboards give.
+_UNIT = r"[A-Za-z%°µμΩ][A-Za-z%°µμΩ²³]{0,7}(?:/[A-Za-z0-9%°µμΩ²³/]{1,7})?"
 
 # The thread (`[  0 main] `, `[irq] `) and core (`[core 0] `) prefixes are options.
 _ZEPHYR_TAIL = (
