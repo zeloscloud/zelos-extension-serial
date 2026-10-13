@@ -1048,6 +1048,15 @@ def test_command_reply_excludes_teleplot_points(rigs) -> None:
     assert ">phase:5.046" in rig.emitter.messages()
 
 
+def test_a_reply_after_its_echo_keeps_its_values_on_a_fresh_connect(rigs) -> None:
+    # A device that prints only when asked: the echo is the first line after the open.
+    reply = b"adc read\r\nch0=1.23V\r\n" + PROMPT + ERASE
+    rig = rigs(Port(replies={b"adc read\n": [reply]}))
+    rig.settle()
+    assert rig.ask("command", text="adc read")["reply"] == ["ch0=1.23V"]
+    assert [v.name for v in rig.emitter.lines()[-1].values] == ["ch0"]
+
+
 def test_command_ends_300_ms_after_its_reply_goes_quiet(rigs) -> None:
     port = Port(replies={b"ls\n": [b"ls\r\n"]})
     rig = rigs(port)

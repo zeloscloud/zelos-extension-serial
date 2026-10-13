@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Keep the values of a command's reply line after its echo, on a device that prints only when asked. After each connect, the echo did not count as the first line, so the reply was taken for the rest of a split line and gave no signals.
 - Read a unit written with the Greek `μ` (U+03BC), such as `12μA`, as the micro sign. The value was dropped, and in key=value its name went with it.
 - Log a line that starts like a prompt, such as `Test #3: erasing flash`, when a pause or the port closing releases it. Only a line that a shell erases is a redrawn prompt; such a line was dropped, so the last line before a hang was lost.
 - On macOS, treat a Port field of `/dev/tty.X` as the listed device `/dev/cu.X`. Auto-configure added a second port for a board already configured by its `tty` path.
