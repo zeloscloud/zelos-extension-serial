@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
+- Report a Reset line of `rts` with flow control `rts/cts` as a config mistake. Flow control drives RTS, so on a CP2102 RTS stayed asserted whatever RTS at open said, and Reset Device answered `ok` without a pulse and left RTS deasserted.
 - On macOS, report a baud the driver refuses, such as 250000, as `Unsupported setting: baud 250000 is not supported.` serialx ignored the refusal, so the port opened at 115200 and reported nothing.
 - Keep the values of a command's reply line after its echo, on a device that prints only when asked. After each connect, the echo did not count as the first line, so the reply was taken for the rest of a split line and gave no signals.
 - Read a unit written with the Greek `μ` (U+03BC), such as `12μA`, as the micro sign. The value was dropped, and in key=value its name went with it.

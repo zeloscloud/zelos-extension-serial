@@ -120,6 +120,12 @@ def load(path: Path | None = None) -> Settings:
             problems.append(
                 f"{_where(index, item)}: name '{port.name}' is already used by port {names[key]}."
             )
+        # Flow control drives RTS itself: a pulse on it left RTS low and reset nothing.
+        if port.rtscts and port.reset_line == "rts":
+            problems.append(
+                f"{_where(index, item)}, Reset line: rts does not work with flow control rts/cts, "
+                "which drives RTS. Use dtr or none."
+            )
         ports.append(port)
     if problems:
         raise ConfigError(problems)

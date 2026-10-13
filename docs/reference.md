@@ -236,6 +236,7 @@ Settings, Advanced (all ports): unknown setting foo.
 ```
 
 A setting a port does not use, such as `baud` on a `tcp` port, is ignored.
+With **Flow control** `rts/cts`, the port drives RTS: **RTS at open** has no effect, and a **Reset line** of `rts` is a mistake.
 
 ### Device IDs and Windows names
 
