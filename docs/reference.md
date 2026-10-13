@@ -330,7 +330,7 @@ Run Command takes `timeout_s`, from 0.1 to 60, default 2.
 The reply ends at the next prompt, after 300 ms without bytes once a reply line has arrived, or at the timeout.
 A prompt that runs into a log line ends the reply too, and the log line stays out of it.
 
-Lines with a log prefix (Zephyr, ESP-IDF, Arduino on ESP32, Linux kernel) are logged but left out of the reply, and so is Zephyr's `--- n messages dropped ---` notice.
+Lines with a log prefix (Zephyr, ESP-IDF, Arduino on ESP32, Linux kernel) are logged but left out of the reply, and so are Teleplot lines such as `>phase:2.6` and Zephyr's `--- n messages dropped ---` notice.
 Every other line the device prints during the command joins the reply, such as boot lines without a log prefix after a reset.
 
 The device's echo of a line sent by Send or Run Command, bare or after a prompt within 2 s, is neither logged nor part of the reply; the `tx` row on the port's log already records the text.

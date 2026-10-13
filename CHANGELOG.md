@@ -5,6 +5,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Leave Teleplot points, such as `>phase:2.6`, out of a Run Command reply, as log lines are. A board that streams Teleplot while it answers a command no longer puts a point in the reply.
+
 ### Fixed
 
 - Store the device node, not the device ID, for two connected devices that share one ID, such as two boards whose CP2102 bridges both report serial `0001`. List Ports offered both boards with the first one's ID, and Auto-configure added two ports that both opened the first board. Auto-configure now also adds a second such board when the first is configured by its ID.
