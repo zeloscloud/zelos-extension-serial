@@ -317,7 +317,7 @@ def test_auto_config_keeps_every_port_and_adds_only_new_devices(
         {"connection": "serial", "port": "usb:0403:6001:A50285BI", "baud": 9600, "name": "dut"},
         {"connection": "serial", "port": "/dev/ttyACM0", "advanced": {"reset_line": "dtr"}},
         {"connection": "tcp", "host": "bench", "tcp_port": 4001, "name": "FT232R USB UART"},
-        {"connection": "serial"},
+        {"connection": "serial", "name": "spare"},
     ]
 
     answer = run("auto_config", config={"ports": existing, "advanced": {"prefix": "Bench"}})
@@ -347,6 +347,31 @@ def test_list_ports_offers_the_device_node_of_linux_devices_that_share_an_id(
     )
 
     assert [c["value"] for c in run("list_ports")["choices"]] == ["/dev/ttyUSB1", "/dev/ttyUSB0"]
+
+
+# What a new form holds: one serial entry with nothing typed in, and the defaults it fills in.
+BLANK = {"connection": "serial", "baud": 115200, "advanced": {"reset_line": "none"}}
+
+
+def test_auto_config_replaces_the_blank_entry_of_a_new_form(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    devices.append(ACM)
+
+    answer = run("auto_config", config={"ports": [BLANK]})
+
+    assert answer["config"] == {
+        "ports": [{"connection": "serial", "port": "usb:2341:0043:75735303"}]
+    }
+
+
+def test_auto_config_on_a_new_form_with_no_devices_adds_the_demo(
+    devices: list[serialx.SerialPortInfo],
+) -> None:
+    answer = run("auto_config", config={"ports": [BLANK]})
+
+    assert answer["config"] == {"ports": [{"connection": "demo"}]}
+    assert answer["message"] == "No USB serial devices found; added the demo device."
 
 
 def test_auto_config_adds_devices_that_share_an_id_by_path(
