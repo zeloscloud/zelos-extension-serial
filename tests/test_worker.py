@@ -7,19 +7,20 @@ import re
 import threading
 import time
 from collections.abc import Callable, Iterable, Iterator
+from dataclasses import dataclass
 from types import SimpleNamespace
-from typing import Any, get_args
+from typing import Any, cast, get_args
 
 import pytest
 import serialx
+import zelos_sdk
+from zelos_log_lines.stream import LogStream, StreamState
 
 from tests.conftest import FakeTransport, listed_port, port_config, wait_until
 from zelos_extension_serial import discovery
 from zelos_extension_serial import worker as worker_module
 from zelos_extension_serial.config import PortConfig, Settings
 from zelos_extension_serial.discovery import PortInfo, PortNotFound
-from zelos_extension_serial.emitter import Emitter, SignalInfo
-from zelos_extension_serial.formats import Parsed
 from zelos_extension_serial.transport import Transport, WriteTimeout, open_transport
 from zelos_extension_serial.worker import PortWorker, RequestKind
 
@@ -61,46 +62,61 @@ class VirtualStop(threading.Event):
         return self.is_set()
 
 
-class RecordingEmitter(Emitter):
-    """Records what the worker writes."""
+# The names of the extension's own rows.
+NOTES = ("serial", "tx")
+
+
+@dataclass(frozen=True)
+class Row:
+    """One `<port>/log` row, and the values written at its time."""
+
+    level: str
+    message: str
+    name: str
+    time_ns: int
+    event: str | None
+    values: list[str]
+
+
+class RecordedEvent:
+    def __init__(self, name: str, rows: list[tuple[str, dict[str, Any], int]]) -> None:
+        self.name = name
+        self.rows = rows
+
+    def log_at(self, time_ns: int, **row: Any) -> None:
+        self.rows.append((self.name, row, time_ns))
+
+
+class RecordingSource:
+    """Stands in for a zelos_sdk.TraceSource: keeps every row written, in order."""
 
     def __init__(self) -> None:
-        self.events: list[tuple[str, Any, int]] = []
-        self.value_lines = 0
-        self.late_names = 0
-        self.signal_list: list[SignalInfo] = []
-        self.flushes: list[int | None] = []
+        self.rows: list[tuple[str, dict[str, Any], int]] = []
 
-    def line(self, port: str, parsed: Parsed, time_ns: int) -> None:
-        self.events.append(("line", parsed, time_ns))
+    def add_event(self, name: str, schema: object) -> RecordedEvent:
+        return RecordedEvent(name, self.rows)
 
-    def note(self, port: str, level: str, message: str, time_ns: int, name: str = "serial") -> None:
-        self.events.append(("note", (level, message, name), time_ns))
+    def log(self) -> list[Row]:
+        rows = list(self.rows)
+        values = {t: (event, list(row)) for event, row, t in rows if not event.endswith("/log")}
+        return [
+            Row(row["level"], row["message"], row["name"], t, *values.get(t, (None, [])))
+            for event, row, t in rows
+            if event.endswith("/log")
+        ]
 
-    def flush(self, port: str, now_ns: int | None = None) -> None:
-        self.flushes.append(now_ns)
-
-    def signals(self, port: str) -> list[SignalInfo]:
-        return self.signal_list
-
-    def counters(self, port: str) -> dict[str, int]:
-        return {
-            "signals": len(self.signal_list),
-            "late_names": self.late_names,
-            "value_lines": self.value_lines,
-        }
-
-    def lines(self) -> list[Parsed]:
-        return [parsed for kind, parsed, _ in list(self.events) if kind == "line"]
+    def lines(self) -> list[Row]:
+        """The device's rows; a module's values are in them once it is set up."""
+        return [row for row in self.log() if row.name not in NOTES]
 
     def messages(self) -> list[str]:
-        return [parsed.message for parsed in self.lines()]
+        return [row.message for row in self.lines()]
 
     def notes(self) -> list[tuple[str, str, str]]:
-        return [note for kind, note, _ in list(self.events) if kind == "note"]
+        return [(row.level, row.message, row.name) for row in self.log() if row.name in NOTES]
 
     def times(self) -> list[int]:
-        return [t for _, _, t in list(self.events)]
+        return [row.time_ns for row in self.log()]
 
 
 class Port(FakeTransport):
@@ -143,13 +159,17 @@ class Rig:
         on_open: Callable[["Rig"], None] | None = None,
     ) -> None:
         self.clock = Clock()
-        self.emitter = RecordingEmitter()
+        self.source = RecordingSource()
         self.budgets: list[float | None] = []
         self.script = list(script)
         self.opened: list[int] = []
         self.on_open = on_open
         self.worker = PortWorker(
-            cfg or port_config(), self.emitter, settings, open=self._open, now=self.clock
+            cfg or port_config(),
+            cast(zelos_sdk.TraceSource, self.source),
+            settings,
+            open=self._open,
+            now=self.clock,
         )
         self.stop_flag: VirtualStop | None = None
         if virtual:
@@ -186,6 +206,11 @@ class Rig:
 
     def health(self) -> str:
         return self.ask("state")["health"]
+
+    def stop(self) -> None:
+        """Stop the worker, which writes every value its port holds."""
+        self.worker.stop()
+        self.worker.join(1.0)
 
 
 @pytest.fixture
@@ -243,9 +268,25 @@ class Wall:
 def test_lines_of_one_tick_are_logged_1_us_apart_in_console_order(rigs, monkeypatch) -> None:
     Wall(monkeypatch)
     rig = rigs(Port([b"one\r\ntwo\r\nthree\r\n"]))
-    wait_until(lambda: len(rig.emitter.messages()) == 3)
-    assert rig.emitter.messages() == ["one", "two", "three"]
-    assert rig.emitter.times() == [50 * S, 50 * S + US, 50 * S + 2 * US, 50 * S + 3 * US]
+    logged(rig, 3)
+    assert rig.source.messages() == ["one", "two", "three"]
+    assert rig.source.times() == [50 * S, 50 * S + US, 50 * S + 2 * US, 50 * S + 3 * US]
+
+
+def logged(rig: Rig, count: int) -> None:
+    """Wait for `count` of the device's rows: once the stream has read that many lines, the port
+    falls quiet for 100 ms, which writes the record the stream held for more."""
+    wait_until(lambda: rig.ask("state")["counters"]["lines"] >= count)
+    rig.clock.ns += 100 * MS
+    wait_until(lambda: len(rig.source.lines()) >= count)
+
+
+def logs(rig: Rig, text: str) -> None:
+    """Wait for the device's row `text`: once the stream has read it, the port falls quiet for
+    100 ms, which writes the record the stream held for more."""
+    wait_until(lambda: any(text in line for line in rig.ask("sample", lines=1000)["lines"]))
+    rig.clock.ns += 100 * MS
+    wait_until(lambda: text in rig.source.messages())
 
 
 def wall_rig(rigs, monkeypatch) -> tuple[Rig, Wall, Port]:
@@ -254,15 +295,15 @@ def wall_rig(rigs, monkeypatch) -> tuple[Rig, Wall, Port]:
     port = Port([b"one\r\n"])
     rig = rigs(port)
     wall.clock = rig.clock
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
+    wait_until(lambda: rig.ask("state")["counters"]["lines"] == 1)
     return rig, wall, port
 
 
 def second_line_time(rig: Rig, port: Port) -> int:
     rig.settle()
     port.chunks.append(b"two\r\n")
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    return rig.emitter.times()[-1]
+    logged(rig, 2)
+    return rig.source.times()[-1]
 
 
 def test_host_time_keeps_to_its_own_clock_through_wall_clock_drift_under_1_s(
@@ -296,10 +337,10 @@ def test_prompts_and_redraws_are_counted_not_logged(rigs) -> None:
         b"# ",
     ]
     rig = rigs(Port(chunks))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
+    logged(rig, 2)
     rig.clock.ns += 100 * MS
     wait_until(lambda: rig.ask("state")["counters"]["prompts"] == 3)
-    assert rig.emitter.messages() == ["dcdc: rail=13.65V", "dcdc: rail=13.65V"]
+    assert rig.source.messages() == ["dcdc: rail=13.65V", "dcdc: rail=13.65V"]
     # Sample has the lines as the log has them; hex has the bytes, prompts and all.
     assert rig.ask("sample", lines=5)["lines"] == [
         "[00:00:01.000,000] <inf> dcdc: rail=13.65V",
@@ -307,48 +348,55 @@ def test_prompts_and_redraws_are_counted_not_logged(rigs) -> None:
     ]
 
 
+def test_a_line_written_after_a_pause_waits_for_the_port_thread(rigs) -> None:
+    """The stream's timer writes a paused line on a thread of its own."""
+    rig = rigs(Port([b"# "]))
+    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == 2)
+    with rig.worker._lock:
+        rig.clock.ns += 100 * MS
+        time.sleep(0.3)
+        assert rig.worker._counters["prompts"] == 0
+    wait_until(lambda: rig.ask("state")["counters"]["prompts"] == 1)
+
+
 def test_a_custom_prompt_replaces_the_default(rigs) -> None:
     rig = rigs(Port([b"# \r\nok> \r\n"]), cfg=port_config(prompt=re.compile(r"ok> ")))
     wait_until(lambda: rig.ask("state")["counters"]["prompts"] == 1)
-    assert rig.emitter.messages() == ["# "]
+    logged(rig, 1)
+    assert rig.source.messages() == ["# "]
 
 
 @pytest.mark.parametrize(
-    ("line", "rule", "module", "device_ns", "message", "values"),
+    ("line", "rule", "module", "message", "values"),
     [
         (
             PROMPT + zephyr(19.024, "pump: rpm=1042 temp=23.5C"),
             "zephyr+kv",
             "pump",
-            19_024 * MS,
             "pump: rpm=1042 temp=23.5C",
             ["rpm", "temp"],
         ),
-        (
-            b"# [   12.345678] eth0: link up\r\n",
-            "linux",
-            "kernel",
-            12_345_678 * US,
-            "eth0: link up",
-            [],
-        ),
+        (b"# [   12.345678] eth0: link up\r\n", "linux", "kernel", "eth0: link up", []),
     ],
     ids=["zephyr", "linux"],
 )
 def test_a_prompt_run_into_a_log_line_is_counted_and_the_log_line_logged_alone(
-    rigs, line: bytes, rule: str, module: str, device_ns: int, message: str, values: list[str]
+    rigs, line: bytes, rule: str, module: str, message: str, values: list[str]
 ) -> None:
     rig = rigs(Port([BANNER, line]))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    parsed = rig.emitter.lines()[1]
-    # Values with a module go to the module's event, not to the port's `values` event.
-    assert (parsed.level, parsed.rule, parsed.module) == ("info", rule, module)
-    assert (parsed.device_ns, parsed.message) == (device_ns, message)
-    assert [v.name for v in parsed.values] == values
+    logged(rig, 2)
     state = rig.ask("state")
     assert state["counters"]["prompts"] == 1
     assert state["counters"]["lines"] == 2
+    # Its printed uptime placed it.
+    assert state["clock"] == "in use"
     assert rig.ask("sample", lines=1)["lines"][0].endswith(message)
+    rig.ask("release")
+    row = rig.source.lines()[1]
+    assert (row.level, row.name, row.message, row.values) == ("info", module, message, values)
+    # Values with a module go to the module's event, not to the port's `values` event.
+    signals = [(s["event"], s["field"], s["rule"]) for s in rig.ask("state")["signals"]]
+    assert signals == [(f"dut/{module}", value, rule) for value in values]
 
 
 @pytest.mark.parametrize(
@@ -366,36 +414,41 @@ def test_a_partial_prompt_run_into_a_log_line_logs_the_log_line_without_values(
     rig = rigs(Port([BANNER, pending]))
     wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + pending))
     release(rig)
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    parsed = rig.emitter.lines()[1]
-    assert (parsed.level, parsed.module, parsed.device_ns) == ("info", "pump", 19_024 * MS)
-    assert (parsed.message, parsed.values) == ("pump: rpm=10", ())
-    assert rig.ask("state")["counters"]["prompts"] == 1
+    logged(rig, 2)
+    state = rig.ask("state")
+    assert state["counters"]["prompts"] == 1
+    assert state["clock"] == "in use"
+    rig.stop()
+    row = rig.source.lines()[1]
+    assert (row.level, row.name, row.message, row.values) == ("info", "pump", "pump: rpm=10", [])
 
 
 @pytest.mark.parametrize("text", ["$ ls -la", "# comment", ">>> 1+1"])
 def test_a_prompt_and_text_that_is_no_log_line_is_logged_whole(rigs, text: str) -> None:
     rig = rigs(Port([BANNER, text.encode() + b"\r\n"]))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert rig.emitter.lines()[1].message == text
+    logged(rig, 2)
+    assert rig.source.lines()[1].message == text
     assert rig.ask("state")["counters"]["prompts"] == 0
 
 
 def test_first_line_after_each_connect_is_logged_without_values_when_unprefixed(rigs) -> None:
     first = Port([b"=13.65V in=4.3A\r\n", b"a=1\r\n"], read_error=OSError(errno.EIO, "gone"))
-    second = Port([b"b=2\r\n", b"c=3\r\n"])
+    # `a` again: a name first printed after the disconnect set up its event is not recorded.
+    second = Port([b"a=2\r\n", b"a=3\r\n"])
     rig = rigs(first, second)
-    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.emitter.notes())
+    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.source.notes())
     rig.clock.ns += 500 * MS
-    wait_until(lambda: "c=3" in rig.emitter.messages())
-    logged = [(p.message, [v.name for v in p.values]) for p in rig.emitter.lines()]
-    assert logged == [("=13.65V in=4.3A", []), ("a=1", ["a"]), ("b=2", []), ("c=3", ["c"])]
+    logs(rig, "a=3")
+    rig.stop()
+    logged = [(row.message, row.values) for row in rig.source.lines()]
+    assert logged == [("=13.65V in=4.3A", []), ("a=1", ["a"]), ("a=2", []), ("a=3", ["a"])]
 
 
 def test_first_line_keeps_its_values_when_prefixed(rigs) -> None:
     rig = rigs(Port([zephyr(0.02)]))
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
-    assert [v.name for v in rig.emitter.lines()[0].values] == ["rail"]
+    logged(rig, 1)
+    rig.stop()
+    assert rig.source.lines()[0].values == ["rail"]
 
 
 ZEPHYR_HALF = b"[00:00:02.000,000] <inf> dcdc: rail=13.6"
@@ -406,11 +459,12 @@ def test_a_line_split_by_a_pause_logs_its_first_half_without_values(rigs) -> Non
     rig = rigs(port)
     wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + ZEPHYR_HALF))
     rig.clock.ns += 100 * MS
-    wait_until(lambda: "dcdc: rail=13.6" in rig.emitter.messages())
-    assert rig.emitter.lines()[1].values == ()
+    logs(rig, "dcdc: rail=13.6")
+    rig.stop()
+    assert rig.source.lines()[1].values == []
 
 
-def paused(rigs, head: bytes, tail: bytes) -> list[Parsed]:
+def paused(rigs, head: bytes, tail: bytes) -> list[Row]:
     """The lines logged after the banner when `head`, a 100 ms pause and then `tail` arrive."""
     port = Port([BANNER, head])
     rig = rigs(port)
@@ -420,14 +474,15 @@ def paused(rigs, head: bytes, tail: bytes) -> list[Parsed]:
     port.chunks.append(tail)
     wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + head + tail))
     rig.settle()
-    return rig.emitter.lines()[1:]
+    rig.stop()
+    return rig.source.lines()[1:]
 
 
 def test_the_rest_of_a_line_split_by_a_pause_is_logged_without_values(rigs) -> None:
     lines = paused(rigs, b"[00:00:02.000,000] <inf> dcdc: rail=13.64V in=4.50A", b" limit=2.0A\r\n")
     assert [(p.message, p.values) for p in lines] == [
-        ("dcdc: rail=13.64V in=4.50A", ()),
-        (" limit=2.0A", ()),
+        ("dcdc: rail=13.64V in=4.50A", []),
+        (" limit=2.0A", []),
     ]
 
 
@@ -443,7 +498,7 @@ def test_a_last_line_that_starts_like_a_prompt_is_logged(rigs, release: str, tex
     else:
         rig.ask("release")
     rig.settle()
-    assert text in rig.emitter.messages()
+    assert text in rig.source.messages()
     assert rig.ask("state")["counters"]["prompts"] == 0
 
 
@@ -454,12 +509,12 @@ def test_a_line_that_starts_like_a_prompt_keeps_its_first_half_over_a_pause(rigs
 
 def test_a_line_after_a_paused_prompt_keeps_its_values(rigs) -> None:
     lines = paused(rigs, b"esp32> ", b"temp=35.8C\r\n")
-    assert [(p.message, [v.name for v in p.values]) for p in lines] == [("temp=35.8C", ["temp"])]
+    assert [(p.message, p.values) for p in lines] == [("temp=35.8C", ["temp"])]
 
 
 def test_a_log_line_after_a_split_line_keeps_its_values(rigs) -> None:
     lines = paused(rigs, b"booting", zephyr(0.02))
-    assert [(p.message, [v.name for v in p.values]) for p in lines] == [
+    assert [(p.message, p.values) for p in lines] == [
         ("booting", []),
         ("dcdc: rail=13.65V", ["rail"]),
     ]
@@ -467,8 +522,9 @@ def test_a_log_line_after_a_split_line_keeps_its_values(rigs) -> None:
 
 def test_cut_pieces_record_no_values(rigs) -> None:
     rig = rigs(Port([BANNER, b"a=1 " * 1100 + b"\r\n"]))
-    wait_until(lambda: len(rig.emitter.lines()) == 3)
-    assert [len(p.values) for p in rig.emitter.lines()] == [0, 0, 0]
+    logged(rig, 3)
+    rig.stop()
+    assert [p.values for p in rig.source.lines()] == [[], [], []]
 
 
 @pytest.mark.parametrize(
@@ -483,26 +539,32 @@ def test_cut_pieces_record_no_values(rigs) -> None:
 def test_a_line_pending_when_the_port_closes_is_logged_without_values(
     rigs, lost: Callable[[Rig, Port], object]
 ) -> None:
-    port = Port([BANNER, ZEPHYR_HALF])
+    sent = BANNER + zephyr(1.0) + ZEPHYR_HALF
+    port = Port([BANNER, zephyr(1.0), ZEPHYR_HALF])
     rig = rigs(port, ConnectionRefusedError())
-    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(BANNER + ZEPHYR_HALF))
+    wait_until(lambda: rig.ask("state")["counters"]["rx_bytes"] == len(sent))
     lost(rig, port)
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert rig.emitter.lines()[1].message == "dcdc: rail=13.6"
-    assert rig.emitter.lines()[1].values == ()
-    assert None in rig.emitter.flushes
+    # The values held are written as the port closes too.
+    wait_until(
+        lambda: (
+            [(row.message, row.values) for row in rig.source.lines()[1:]]
+            == [("dcdc: rail=13.65V", ["rail"]), ("dcdc: rail=13.6", [])]
+        )
+    )
 
 
 def test_values_off_keeps_the_line_and_drops_its_values(rigs) -> None:
     rig = rigs(Port([b"a=1\r\n", b"b=2 c=3\r\n"]), cfg=port_config(values=False))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert [p.values for p in rig.emitter.lines()] == [(), ()]
+    logged(rig, 2)
+    rig.stop()
+    assert [p.values for p in rig.source.lines()] == [[], []]
 
 
 def test_values_on_keeps_values(rigs) -> None:
     rig = rigs(Port([b"*** banner ***\r\n", b"b=2 c=3\r\n"]))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert [v.name for v in rig.emitter.lines()[1].values] == ["b", "c"]
+    logged(rig, 2)
+    rig.stop()
+    assert rig.source.lines()[1].values == ["b", "c"]
 
 
 class TimedPort(FakeTransport):
@@ -537,8 +599,8 @@ def test_device_time_is_mapped_and_a_restart_noted(rigs, monkeypatch) -> None:
         (100_150 * MS, zephyr(0.52)),
     ]
     rig = timed_rig(rigs, monkeypatch, chunks)
-    wait_until(lambda: len(rig.emitter.lines()) == 4)
-    events = [(kind, t) for kind, _, t in rig.emitter.events]
+    logged(rig, 4)
+    events = [("note" if row.name in NOTES else "line", row.time_ns) for row in rig.source.log()]
     # The restart is known at the second line after it; the first keeps host time.
     assert events[1:] == [
         ("line", 100_000 * MS),
@@ -547,7 +609,7 @@ def test_device_time_is_mapped_and_a_restart_noted(rigs, monkeypatch) -> None:
         ("note", 100_150 * MS),
         ("line", 100_150 * MS + US),
     ]
-    assert rig.emitter.notes()[1] == ("warn", "[serial] device restarted", "serial")
+    assert rig.source.notes()[1] == ("warn", "[serial] device restarted", "serial")
     assert rig.ask("state")["clock"] == "in use"
 
 
@@ -555,8 +617,8 @@ def test_host_time_source_ignores_device_time(rigs, monkeypatch) -> None:
     chunks = [(100_000 * MS, zephyr(1.0)), (100_050 * MS, zephyr(1.01))]
     host = Settings(ports=(), prefix="Serial", time_source="host", log_level="INFO")
     rig = timed_rig(rigs, monkeypatch, chunks, settings=host)
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert rig.emitter.times()[1:] == [100_000 * MS, 100_050 * MS]
+    logged(rig, 2)
+    assert rig.source.times()[1:] == [100_000 * MS, 100_050 * MS]
     assert rig.ask("state")["clock"] == "host"
 
 
@@ -568,7 +630,7 @@ def test_send_text_appends_the_line_ending(rigs) -> None:
     rig = rigs(port, cfg=port_config(line_ending=b"\r\n"))
     assert rig.ask("send", text="hello") == {"bytes_written": 7}
     assert port.writes == [b"hello\r\n"]
-    assert rig.emitter.notes()[-1] == ("info", "> hello", "tx")
+    assert rig.source.notes()[-1] == ("info", "> hello", "tx")
     assert rig.ask("state")["counters"]["tx_bytes"] == 7
 
 
@@ -577,7 +639,7 @@ def test_send_hex_writes_the_bytes_alone(rigs) -> None:
     rig = rigs(port)
     assert rig.ask("send", text="0a0d", hex=True) == {"bytes_written": 2}
     assert port.writes == [b"\n\r"]
-    assert rig.emitter.notes()[-1] == ("info", "> hex: 0a0d", "tx")
+    assert rig.source.notes()[-1] == ("info", "> hex: 0a0d", "tx")
     assert rig.fails("send", text="zz", hex=True) == "hex must be pairs of hex digits, such as 0d0a"
 
 
@@ -589,18 +651,18 @@ def test_the_echo_of_a_send_is_not_logged(rigs, echo: bytes) -> None:
     port = Port([BANNER], replies={b"dcdc limit set 2.0\n": [echo + b"limit set to 2.0 A\r\n"]})
     rig = rigs(port)
     rig.ask("send", text="dcdc limit set 2.0")
-    wait_until(lambda: "limit set to 2.0 A" in rig.emitter.messages())
-    assert rig.emitter.messages() == [BANNER.decode().strip(), "limit set to 2.0 A"]
-    assert rig.emitter.notes()[-1] == ("info", "> dcdc limit set 2.0", "tx")
+    logs(rig, "limit set to 2.0 A")
+    assert rig.source.messages() == [BANNER.decode().strip(), "limit set to 2.0 A"]
+    assert rig.source.notes()[-1] == ("info", "> dcdc limit set 2.0", "tx")
     assert rig.ask("state")["counters"]["echoes"] == 1
 
 
 def test_an_echo_is_consumed_once(rigs) -> None:
     rig = rigs(Port([BANNER], replies={b"ls\n": [b"ls\r\nls\r\n"]}))
     rig.ask("send", text="ls")
-    wait_until(lambda: "ls" in rig.emitter.messages())
+    logs(rig, "ls")
     rig.settle()
-    assert rig.emitter.messages().count("ls") == 1
+    assert rig.source.messages().count("ls") == 1
 
 
 def test_a_second_echo_of_a_command_joins_its_reply(rigs) -> None:
@@ -617,21 +679,23 @@ def test_a_sent_text_is_an_echo_for_2_s(rigs, after_ns: int, logged: bool) -> No
     port.chunks.append(b"hello\r\n")
     wait_until(lambda: not port.chunks)
     rig.settle()
-    assert ("hello" in rig.emitter.messages()) is logged
+    rig.clock.ns += 100 * MS
+    rig.settle()
+    assert ("hello" in rig.source.messages()) is logged
 
 
 def test_prompt_and_text_never_sent_is_logged(rigs) -> None:
     rig = rigs(Port([BANNER], replies={b"reboot\n": [b"uart:~$ uptime\r\n"]}))
     rig.ask("send", text="reboot")
-    wait_until(lambda: "uart:~$ uptime" in rig.emitter.messages())
+    logs(rig, "uart:~$ uptime")
     assert rig.ask("state")["counters"]["echoes"] == 0
 
 
 def test_hex_sends_have_no_echo(rigs) -> None:
     rig = rigs(Port([BANNER], replies={b"hi": [b"6869\r\nhi\r\n"]}))
     rig.ask("send", text="6869", hex=True)
-    wait_until(lambda: "hi" in rig.emitter.messages())
-    assert "6869" in rig.emitter.messages()
+    logs(rig, "hi")
+    assert "6869" in rig.source.messages()
 
 
 def test_only_the_last_8_sends_are_remembered(rigs) -> None:
@@ -640,9 +704,9 @@ def test_only_the_last_8_sends_are_remembered(rigs) -> None:
     for i in range(1, 10):
         rig.ask("send", text=f"t{i}")
     port.chunks.append(b"t1\r\nt2\r\n")
-    wait_until(lambda: "t1" in rig.emitter.messages())
+    logs(rig, "t1")
     rig.settle()
-    assert rig.emitter.messages() == [BANNER.decode().strip(), "t1"]
+    assert rig.source.messages() == [BANNER.decode().strip(), "t1"]
 
 
 def test_requests_need_an_open_port(rigs) -> None:
@@ -674,7 +738,7 @@ def test_a_write_timeout_after_some_bytes_records_what_left(
 ) -> None:
     rig = rigs(Port(write_error=WriteTimeout(written)))
     assert rig.fails("send", **args) == error
-    assert rig.emitter.notes()[-1] == ("info", tx, "tx")
+    assert rig.source.notes()[-1] == ("info", tx, "tx")
     assert rig.ask("state")["counters"]["tx_bytes"] == written
 
 
@@ -683,7 +747,7 @@ def test_an_empty_send_is_logged_as_the_line_ending(rigs) -> None:
     rig = rigs(port)
     assert rig.ask("send", text="") == {"bytes_written": 1}
     assert port.writes == [b"\n"]
-    assert rig.emitter.notes()[-1] == ("info", "> (line ending)", "tx")
+    assert rig.source.notes()[-1] == ("info", "> (line ending)", "tx")
 
 
 def test_write_error_closes_the_port_and_reconnects(rigs) -> None:
@@ -692,7 +756,7 @@ def test_write_error_closes_the_port_and_reconnects(rigs) -> None:
     assert rig.fails("send", text="x") == "disconnected from fake"
     assert port.closed
     assert rig.ask("state")["state"] == "connecting"
-    assert ("warn", "[serial] disconnected from fake", "serial") in rig.emitter.notes()
+    assert ("warn", "[serial] disconnected from fake", "serial") in rig.source.notes()
 
 
 class LineTimes(Port):
@@ -723,7 +787,7 @@ def test_reset_drives_the_line_away_from_idle_for_100_ms(
     assert port.lines == pulse
     # Not 0.1: a Windows timed wait can end one 15.6 ms timer tick early.
     assert port.times[1] - port.times[0] >= 0.08
-    assert rig.emitter.notes()[-1] == ("info", f"[serial] reset pulse on {reset_line}", "serial")
+    assert rig.source.notes()[-1] == ("info", f"[serial] reset pulse on {reset_line}", "serial")
 
 
 @pytest.mark.parametrize(
@@ -752,7 +816,7 @@ def test_release_and_acquire(rigs) -> None:
     assert rig.ask("acquire") == {"ok": True}
     assert rig.ask("state")["state"] == "open"
     assert len(rig.opened) == 2
-    assert rig.emitter.notes()[-2:] == [
+    assert rig.source.notes()[-2:] == [
         ("info", "[serial] released fake", "serial"),
         ("info", "[serial] acquired fake", "serial"),
     ]
@@ -801,7 +865,7 @@ def test_acquire_waits_through_failed_opens_for_a_device_coming_back(
     assert not acquire.done()
     rig.clock.ns += 1 * S
     assert acquire.result(timeout=2) == {"ok": True}
-    assert rig.emitter.notes()[-1] == ("info", "[serial] acquired fake", "serial")
+    assert rig.source.notes()[-1] == ("info", "[serial] acquired fake", "serial")
 
 
 def test_acquire_gives_the_last_reason_when_its_wait_ends(rigs) -> None:
@@ -866,7 +930,7 @@ def test_release_fails_a_pending_acquire(rigs) -> None:
 
 def test_release_and_acquire_after_a_loss_is_not_a_reconnect(rigs) -> None:
     rig = rigs(Port(read_error=OSError(errno.EIO, "gone")), Port())
-    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.emitter.notes())
+    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.source.notes())
     rig.ask("release")
     rig.ask("acquire")
     assert rig.ask("state")["counters"]["reconnects"] == 0
@@ -879,33 +943,34 @@ def test_release_while_connecting(rigs) -> None:
 
 
 def test_state_reply(rigs) -> None:
-    rig = rigs(Port([b"x" * 5000 + b"\r\n"]))
-    rig.emitter.signal_list.append(SignalInfo("dut/dcdc", "rail", "V", "zephyr+kv", "rail=1V"))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
+    # 1,000 rows set up a module's signals at once.
+    rig = rigs(Port([b"x" * 5000 + b"\r\n", b"rail=1V\r\n" * 1000]))
+    logged(rig, 1002)
     state = rig.ask("state")
+    assert list(state) == ["state", "health", "where", "clock", "counters", "signals"]
     assert state["state"] == "open"
     assert state["where"] == "fake"
     assert state["clock"] == "not seen"
-    assert state["counters"] == {
-        "rx_bytes": 5002,
-        "tx_bytes": 0,
-        "lines": 2,
-        "prompts": 0,
-        "echoes": 0,
-        "reconnects": 0,
-        "faults": 0,
-        "errors": 0,
-        "long_lines": 1,
-        "signals": 1,
-        "late_names": 0,
-        "value_lines": 0,
-    }
+    assert list(state["counters"].items()) == [
+        ("rx_bytes", 14002),
+        ("tx_bytes", 0),
+        ("prompts", 0),
+        ("echoes", 0),
+        ("reconnects", 0),
+        ("faults", 0),
+        ("errors", 0),
+        ("lines", 1002),
+        ("long_lines", 1),
+        ("signals", 1),
+        ("late_names", 0),
+        ("value_lines", 1000),
+    ]
     assert state["signals"] == [
         {
-            "event": "dut/dcdc",
+            "event": "dut/values",
             "field": "rail",
             "unit": "V",
-            "rule": "zephyr+kv",
+            "rule": "plain+kv",
             "example": "rail=1V",
         }
     ]
@@ -913,7 +978,7 @@ def test_state_reply(rigs) -> None:
 
 def test_sample_lines_and_hex_chunks(rigs) -> None:
     rig = rigs(Port([b"a\r\n", b"b\r\n", b"c\r\n"]))
-    wait_until(lambda: len(rig.emitter.lines()) == 3)
+    logged(rig, 3)
     assert rig.ask("sample", lines=2) == {"lines": ["b", "c"]}
     assert rig.ask("sample", lines=50) == {"lines": ["a", "b", "c"]}
     assert rig.ask("sample", lines=2, hex=True) == {"chunks": ["620d0a", "630d0a"]}
@@ -924,9 +989,9 @@ def test_sample_leaves_out_prompts_and_echoes_as_the_log_does(rigs) -> None:
     reply = b"kernel uptime\r\nUptime: 7 ms\r\n" + PROMPT + ERASE + zephyr(1.04)
     chunks = [PROMPT + ERASE + zephyr(1.0), PROMPT + ERASE + zephyr(1.02)]
     rig = rigs(Port(chunks, replies={b"kernel uptime\n": [reply]}))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
+    logged(rig, 2)
     rig.ask("command", text="kernel uptime")
-    wait_until(lambda: len(rig.emitter.lines()) == 4)
+    logged(rig, 4)
     assert rig.ask("sample", lines=50) == {
         "lines": [
             "[00:00:01.000,000] <inf> dcdc: rail=13.65V",
@@ -939,7 +1004,7 @@ def test_sample_leaves_out_prompts_and_echoes_as_the_log_does(rigs) -> None:
 
 def test_sample_asked_for_more_than_is_held_returns_all(rigs) -> None:
     rig = rigs(Port([f"{i}\r\n".encode() for i in range(31)]))
-    wait_until(lambda: len(rig.emitter.lines()) == 31)
+    logged(rig, 31)
     assert len(rig.ask("sample", lines=50)["lines"]) == 31
     assert len(rig.ask("sample", lines=50, hex=True)["chunks"]) == 31
 
@@ -951,36 +1016,37 @@ def test_request_on_a_stopped_worker_raises_at_once(rigs) -> None:
         rig.worker.request("state")
 
 
+def stopping_state(rig: Rig, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Stop the worker when a state request reads the stream's state."""
+    state = LogStream.state
+
+    def stop_then_state(stream: LogStream) -> StreamState:
+        rig.worker.stop()
+        return state(stream)
+
+    monkeypatch.setattr(LogStream, "state", stop_then_state)
+
+
 def test_stop_fails_a_pending_acquire(rigs, monkeypatch) -> None:
     held = Held()
     rig = rigs(Port(), on_open=held)
-    counters = rig.emitter.counters
-
-    def stop_then_count(port: str) -> dict[str, int]:
-        rig.worker.stop()
-        return counters(port)
-
-    monkeypatch.setattr(rig.emitter, "counters", stop_then_count)
+    stopping_state(rig, monkeypatch)
     _, acquire, _ = held.serve(rig, "release", "acquire", "state")
     with pytest.raises(RuntimeError, match="^port is stopped$"):
         acquire.result(timeout=2)
 
 
-def test_an_error_flushing_at_stop_still_fails_a_pending_acquire(rigs, monkeypatch) -> None:
+def test_an_error_ending_the_stream_at_stop_still_fails_a_pending_acquire(
+    rigs, monkeypatch
+) -> None:
     held = Held()
     rig = rigs(Port(), on_open=held)
-    counters = rig.emitter.counters
+    stopping_state(rig, monkeypatch)
 
-    def stop_then_count(port: str) -> dict[str, int]:
-        rig.worker.stop()
-        return counters(port)
+    def end(stream: LogStream) -> list[Any]:
+        raise ValueError("odd end")
 
-    def flush(port: str, now_ns: int | None = None) -> None:
-        if now_ns is None:
-            raise ValueError("odd flush")
-
-    monkeypatch.setattr(rig.emitter, "counters", stop_then_count)
-    monkeypatch.setattr(rig.emitter, "flush", flush)
+    monkeypatch.setattr(LogStream, "end", end)
     _, acquire, _ = held.serve(rig, "release", "acquire", "state")
     with pytest.raises(RuntimeError, match="^port is stopped$"):
         acquire.result(timeout=2)
@@ -1001,7 +1067,7 @@ def test_a_send_served_as_the_worker_stops_writes_nothing(rigs) -> None:
 
 
 def test_every_request_kind_has_a_handler() -> None:
-    worker = PortWorker(port_config(), RecordingEmitter(), SETTINGS)
+    worker = PortWorker(port_config(), cast(zelos_sdk.TraceSource, RecordingSource()), SETTINGS)
     assert set(worker._handlers) == set(get_args(RequestKind))
 
 
@@ -1018,8 +1084,8 @@ def test_command_ends_at_the_prompt(rigs) -> None:
     rig = rigs(zephyr_shell(b"dcdc limit get\n", b"limit: 4.5 A\r\n"))
     reply = rig.ask("command", text="dcdc limit get")
     assert reply == {"reply": ["limit: 4.5 A"], "ended_by": "prompt", "duration_ms": 0}
-    assert rig.emitter.notes()[-1] == ("info", "> dcdc limit get", "tx")
-    assert "limit: 4.5 A" in rig.emitter.messages()
+    assert rig.source.notes()[-1] == ("info", "> dcdc limit get", "tx")
+    assert "limit: 4.5 A" in rig.source.messages()
 
 
 def test_command_ends_at_a_prompt_run_into_a_log_line(rigs) -> None:
@@ -1027,8 +1093,8 @@ def test_command_ends_at_a_prompt_run_into_a_log_line(rigs) -> None:
     rig = rigs(Port([PROMPT], replies={b"ver\n": [after]}))
     reply = rig.ask("command", text="ver")
     assert reply == {"reply": ["zephyr v3.7.0"], "ended_by": "prompt", "duration_ms": 0}
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert rig.emitter.lines()[1].module == "pump"
+    logged(rig, 2)
+    assert rig.source.lines()[1].name == "pump"
     assert rig.ask("state")["counters"]["echoes"] == 1
 
 
@@ -1038,8 +1104,9 @@ def test_command_ends_at_a_prompt_run_into_a_teleplot_point(rigs) -> None:
     rig = rigs(Port(replies={b"limit get\n": [after]}))
     reply = rig.ask("command", text="limit get")
     assert (reply["reply"], reply["ended_by"]) == (["limit 2.0 A"], "prompt")
-    wait_until(lambda: ">phase:0.245" in rig.emitter.messages())
-    assert [v.name for v in rig.emitter.lines()[-1].values] == ["phase"]
+    logs(rig, ">phase:0.245")
+    rig.stop()
+    assert rig.source.lines()[-1].values == ["phase"]
 
 
 def test_command_ignores_the_prompt_erased_before_its_echo(rigs) -> None:
@@ -1065,7 +1132,8 @@ def test_command_removes_the_echo(rigs, echo: bytes, reply: list[str]) -> None:
     port = Port(replies={b"dcdc limit get\n": [echo + b"# " + ERASE]})
     rig = rigs(port)
     assert rig.ask("command", text="dcdc limit get")["reply"] == reply
-    assert rig.emitter.messages() == reply
+    logged(rig, len(reply))
+    assert rig.source.messages() == reply
     assert rig.ask("state")["counters"]["echoes"] == 1 - len(reply)
 
 
@@ -1073,14 +1141,14 @@ def test_command_reply_excludes_log_lines_and_the_dropped_notice(rigs) -> None:
     reply = [zephyr(1.0), b"--- 3 messages dropped ---\r\n", b"limit: 4.5 A\r\n"]
     rig = rigs(zephyr_shell(b"dcdc limit get\n", *reply))
     assert rig.ask("command", text="dcdc limit get")["reply"] == ["limit: 4.5 A"]
-    assert "--- 3 messages dropped ---" in rig.emitter.messages()
+    assert "--- 3 messages dropped ---" in rig.source.messages()
 
 
 def test_command_reply_excludes_teleplot_points(rigs) -> None:
     reply = [b">phase:5.046\r\n", b"limit: 4.5 A\r\n", b">rpm:1:1042;2:1043\r\n"]
     rig = rigs(zephyr_shell(b"dcdc limit get\n", *reply))
     assert rig.ask("command", text="dcdc limit get")["reply"] == ["limit: 4.5 A"]
-    assert ">phase:5.046" in rig.emitter.messages()
+    assert ">phase:5.046" in rig.source.messages()
 
 
 def test_a_reply_after_its_echo_keeps_its_values_on_a_fresh_connect(rigs) -> None:
@@ -1089,7 +1157,8 @@ def test_a_reply_after_its_echo_keeps_its_values_on_a_fresh_connect(rigs) -> Non
     rig = rigs(Port(replies={b"adc read\n": [reply]}))
     rig.settle()
     assert rig.ask("command", text="adc read")["reply"] == ["ch0=1.23V"]
-    assert [v.name for v in rig.emitter.lines()[-1].values] == ["ch0"]
+    rig.stop()
+    assert rig.source.lines()[-1].values == ["ch0"]
 
 
 def test_command_ends_300_ms_after_its_reply_goes_quiet(rigs) -> None:
@@ -1101,7 +1170,7 @@ def test_command_ends_300_ms_after_its_reply_goes_quiet(rigs) -> None:
     rig.settle()
     assert not future.done()
     port.chunks.append(b"a.txt\r\n")
-    wait_until(lambda: "a.txt" in rig.emitter.messages())
+    wait_until(lambda: "a.txt" in rig.ask("sample", lines=10)["lines"])
     rig.clock.ns += 299 * MS
     rig.settle()
     assert not future.done()
@@ -1124,7 +1193,7 @@ def test_command_times_out(rigs) -> None:
 def test_release_aborts_a_command(rigs) -> None:
     rig = rigs(Port(replies={b"ls\n": [b"ls\r\nline\r\n"]}))
     future = rig.worker.request("command", text="ls")
-    wait_until(lambda: "line" in rig.emitter.messages())
+    logs(rig, "line")
     rig.ask("release")
     assert future.result(timeout=2)["ended_by"] == "aborted"
     assert future.result()["reply"] == ["line"]
@@ -1134,7 +1203,7 @@ def test_losing_the_port_aborts_a_command(rigs) -> None:
     port = Port(replies={b"ls\n": [b"ls\r\nline\r\n"]})
     rig = rigs(port, ConnectionRefusedError())
     future = rig.worker.request("command", text="ls")
-    wait_until(lambda: "line" in rig.emitter.messages())
+    wait_until(lambda: "line" in rig.ask("sample", lines=10)["lines"])
     port.read_error = OSError(errno.EIO, "gone")
     assert future.result(timeout=2) == {"reply": ["line"], "ended_by": "aborted", "duration_ms": 0}
 
@@ -1174,7 +1243,7 @@ def test_read_error_closes_notes_and_reconnects_with_backoff(rigs) -> None:
     rig.worker.join(2)
     assert lost.closed
     assert [t / S for t in rig.opened] == [0, 0.5, 1.5, 3.5]
-    assert rig.emitter.notes() == [
+    assert rig.source.notes() == [
         ("info", "[serial] connected to fake", "serial"),
         ("warn", "[serial] disconnected from fake", "serial"),
     ]
@@ -1201,7 +1270,7 @@ def test_backoff_resets_on_the_first_byte_not_on_the_open(
 def test_reconnect_is_counted(rigs) -> None:
     lost = Port(read_error=OSError(errno.EIO, "gone"))
     rig = rigs(lost, Port())
-    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.emitter.notes())
+    wait_until(lambda: ("warn", "[serial] disconnected from fake", "serial") in rig.source.notes())
     assert rig.health() == "Disconnected from fake. Waiting for it to come back."
     rig.clock.ns += 500 * MS
     wait_until(lambda: rig.ask("state")["state"] == "open")
@@ -1314,7 +1383,7 @@ def test_silent_port_checks_presence_every_5_s(rigs, monkeypatch) -> None:
     present["/dev/ttyFAKE"] = False
     rig.clock.ns = 10 * S
     wait_until(lambda: rig.ask("state")["state"] == "connecting")
-    assert ("warn", "[serial] disconnected from fake", "serial") in rig.emitter.notes()
+    assert ("warn", "[serial] disconnected from fake", "serial") in rig.source.notes()
 
 
 def test_tcp_port_never_checks_presence(rigs, monkeypatch) -> None:
@@ -1443,7 +1512,7 @@ def test_health_when_bytes_arrive_without_a_line_end_for_10_s(rigs) -> None:
     assert rig.health().startswith("Connected.")
     noise.until_ns = 10 * S + 50 * MS
     wait_until(lambda: rig.health() == STALLED)
-    assert rig.emitter.lines() == []
+    assert rig.source.lines() == []
 
 
 SILENT = (
@@ -1461,7 +1530,7 @@ def test_health_when_no_byte_arrives_for_10_s_after_each_open(rigs) -> None:
     rig.clock.ns = 10 * S
     assert rig.health() == SILENT
     first.chunks.append(b"hello\r\n")
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
+    logged(rig, 1)
     rig.clock.ns += 60 * S
     assert rig.health() == "Connected. 1 lines, 0 signals, device clock not seen."
     first.read_error = OSError("gone")
@@ -1475,7 +1544,7 @@ def test_health_when_no_byte_arrives_for_10_s_after_each_open(rigs) -> None:
 def test_prompts_and_text_released_by_a_pause_prove_the_baud_rate(rigs) -> None:
     port = Port([b"Welcome to Buildroot\r\n"])
     rig = rigs(port)
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
+    logged(rig, 1)
     rig.clock.ns = 10 * S
     # A quiet port is not a stalled one.
     assert rig.health().startswith("Connected.")
@@ -1497,8 +1566,8 @@ def test_a_long_line_is_logged_whole_even_where_a_piece_looks_like_a_prompt(
     rigs, line: bytes
 ) -> None:
     rig = rigs(Port([line + b"\r\n"]))
-    wait_until(lambda: len(rig.emitter.lines()) == 2)
-    assert "".join(rig.emitter.messages()) == line.decode()
+    logged(rig, 2)
+    assert "".join(rig.source.messages()) == line.decode()
     assert rig.ask("state")["counters"]["prompts"] == 0
 
 
@@ -1507,29 +1576,28 @@ def test_the_end_of_a_long_line_is_not_an_echo(rigs) -> None:
     rig = rigs(port)
     rig.ask("send", text="ls")
     port.chunks.append(b"x" * 4096 + b"ls\r\n")
-    wait_until(lambda: len(rig.emitter.lines()) == 3)
-    assert rig.emitter.messages()[2] == "ls"
+    logged(rig, 3)
+    assert rig.source.messages()[2] == "ls"
     assert rig.ask("state")["counters"]["echoes"] == 0
 
 
 @pytest.mark.parametrize(
-    ("values", "value_lines", "health"),
+    ("values", "last", "health"),
     [
-        (True, 0, "No values found in 300 lines. Run Sample to see the lines."),
-        (False, 0, "Connected. 300 lines, 0 signals, device clock not seen."),
-        (True, 1, "Connected. 300 lines, 0 signals, device clock not seen."),
+        (True, b"hello\r\n", "No values found in 300 lines. Run Sample to see the lines."),
+        (False, b"hello\r\n", "Connected. 300 lines, 0 signals, device clock not seen."),
+        (True, b"a=1\r\n", "Connected. 300 lines, 0 signals, device clock not seen."),
     ],
 )
-def test_health_of_an_open_port(rigs, values: bool, value_lines: int, health: str) -> None:
-    rig = rigs(Port([b"hello\r\n" * 300]), cfg=port_config(values=values))
-    rig.emitter.value_lines = value_lines
-    wait_until(lambda: len(rig.emitter.lines()) == 300)
+def test_health_of_an_open_port(rigs, values: bool, last: bytes, health: str) -> None:
+    rig = rigs(Port([b"hello\r\n" * 299 + last]), cfg=port_config(values=values))
+    logged(rig, 300)
     assert rig.health() == health
 
 
 def test_health_counts_lines_below_300_as_connected(rigs) -> None:
     rig = rigs(Port([zephyr(1.0)]))
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
+    logged(rig, 1)
     assert rig.health() == "Connected. 1 lines, 0 signals, device clock in use."
 
 
@@ -1537,22 +1605,25 @@ def test_health_counts_lines_below_300_as_connected(rigs) -> None:
     ("late", "ending"),
     [
         (
-            1,
+            "a=1",
             " 1 name first printed after the signals were set up is not recorded:"
             " restart the extension to include it.",
         ),
         (
-            3,
+            "a=1 b=2 c=3",
             " 3 names first printed after the signals were set up are not recorded:"
             " restart the extension to include them.",
         ),
     ],
 )
-def test_health_says_names_printed_too_late_are_not_recorded(rigs, late: int, ending: str) -> None:
-    rig = rigs(Port([zephyr(1.0)]))
-    wait_until(lambda: len(rig.emitter.lines()) == 1)
-    rig.emitter.late_names = late
-    assert rig.health() == "Connected. 1 lines, 0 signals, device clock in use." + ending
+def test_health_says_names_printed_too_late_are_not_recorded(rigs, late: str, ending: str) -> None:
+    rig = rigs(Port([zephyr(1.0)]), Port([zephyr(1.02, f"dcdc: rail=13.6V {late}")]))
+    logged(rig, 1)
+    # The release sets up the module's signals with the names printed so far.
+    rig.ask("release")
+    rig.ask("acquire")
+    logged(rig, 2)
+    assert rig.health() == "Connected. 2 lines, 1 signals, device clock in use." + ending
 
 
 def test_a_failing_presence_check_counts_as_present(rigs, monkeypatch, caplog) -> None:
@@ -1584,24 +1655,24 @@ def test_a_failing_presence_check_counts_as_present(rigs, monkeypatch, caplog) -
 def test_an_unexpected_error_is_logged_and_the_port_carries_on(rigs, monkeypatch, caplog) -> None:
     port = Port([b"bad\r\nok\r\nbad\r\n"])
     rig = rigs(port, start=False)
-    record = rig.emitter.line
+    is_prompt = worker_module.is_prompt
 
-    def line(name: str, parsed: Parsed, time_ns: int) -> None:
-        if parsed.message == "bad":
+    def odd(text: str, custom: re.Pattern[str] | None = None) -> bool:
+        if text == "bad":
             raise ValueError("odd line")
-        record(name, parsed, time_ns)
+        return is_prompt(text, custom)
 
-    monkeypatch.setattr(rig.emitter, "line", line)
-    with caplog.at_level(logging.WARNING, logger=worker_module.__name__):
-        rig.worker.start()
-        wait_until(lambda: rig.ask("sample", lines=3)["lines"] == ["bad", "ok", "bad"])
-        rig.clock.ns += 60 * S
-        port.chunks.append(b"bad\r\nlast\r\n")
-        wait_until(lambda: "last" in rig.emitter.messages())
-    assert rig.emitter.messages() == ["ok", "last"]
+    monkeypatch.setattr(worker_module, "is_prompt", odd)
+    rig.worker.start()
+    wait_until(lambda: rig.ask("sample", lines=3)["lines"] == ["bad", "ok", "bad"])
+    rig.clock.ns += 60 * S
+    port.chunks.append(b"bad\r\nlast\r\n")
+    logs(rig, "last")
+    # The odd line is logged as it came.
+    assert rig.source.messages() == ["bad", "ok", "bad", "bad", "last"]
     assert [r.getMessage() for r in caplog.records] == [
-        "dut: unexpected error; the port carries on",
-        "dut: 2 more unexpected errors, the last: ValueError('odd line')",
+        "dut: unexpected error (1 so far); the stream carries on",
+        "dut: unexpected error (3 so far); the stream carries on",
     ]
     assert all(r.exc_info and r.exc_info[0] is ValueError for r in caplog.records)
     assert rig.ask("state")["counters"]["errors"] == 3
@@ -1613,10 +1684,35 @@ def test_an_unexpected_error_outside_a_line_leaves_the_port_running(rigs, monkey
     def note(*_: Any, **__: Any) -> None:
         raise ValueError("odd note")
 
-    monkeypatch.setattr(rig.emitter, "note", note)
+    monkeypatch.setattr(LogStream, "note", note)
     rig.worker.start()
-    wait_until(lambda: "after" in rig.emitter.messages())
+    logs(rig, "after")
     assert rig.ask("state")["counters"]["errors"] == 1
+
+
+def test_unexpected_errors_outside_a_line_are_logged_once_a_minute(
+    rigs, monkeypatch, caplog
+) -> None:
+    port = Port([b"bad 1\r\n", b"bad 2\r\n"])
+    rig = rigs(port, start=False)
+    feed = LogStream.feed
+
+    def odd(stream: LogStream, data: bytes, host_ns: int) -> None:
+        if data.startswith(b"bad"):
+            raise ValueError("odd read")
+        feed(stream, data, host_ns)
+
+    monkeypatch.setattr(LogStream, "feed", odd)
+    with caplog.at_level(logging.WARNING, logger=worker_module.__name__):
+        rig.worker.start()
+        wait_until(lambda: rig.ask("state")["counters"]["errors"] == 2)
+        rig.clock.ns += 60 * S
+        port.chunks.extend([b"bad 3\r\n", b"last\r\n"])
+        logs(rig, "last")
+    assert [r.getMessage() for r in caplog.records] == [
+        "dut: unexpected error; the port carries on",
+        "dut: 2 more unexpected errors, the last: ValueError('odd read')",
+    ]
 
 
 # Throughput and stopping
@@ -1642,16 +1738,16 @@ def test_requests_are_served_within_one_loop_under_a_flood(rigs, monkeypatch) ->
     # Reads, not milliseconds: a shared CI runner's scheduler decides the wall time.
     flood = Flood()
     rig = rigs(flood)
-    wait_until(lambda: len(rig.emitter.lines()) > 1000)
-    counters = rig.emitter.counters
+    logged(rig, 1001)
+    state = LogStream.state
     served_at: list[int] = []
 
-    def counting(port: str) -> dict[str, int]:
-        # A state request reads the counters on the worker's thread, while it is served.
+    def counting(stream: LogStream) -> StreamState:
+        # A state request reads the stream's state on the worker's thread, while it is served.
         served_at.append(flood.reads)
-        return counters(port)
+        return state(stream)
 
-    monkeypatch.setattr(rig.emitter, "counters", counting)
+    monkeypatch.setattr(LogStream, "state", counting)
     for _ in range(5):
         queued_at = flood.reads
         served_at.clear()
@@ -1686,17 +1782,19 @@ def assert_stops_in_a_second(worker: PortWorker) -> None:
     assert time.monotonic() - started < 1.0
 
 
-def test_held_signal_rows_are_flushed_every_loop_and_when_the_port_closes(
-    rigs, monkeypatch
-) -> None:
-    wall = Wall(monkeypatch)
-    rig = rigs(Port())
-    wall.clock = rig.clock
-    rig.clock.ns = 7 * S
-    rig.settle()
-    assert rig.emitter.flushes[-1] == 50 * S + 7 * S
+def test_held_values_are_written_2_s_after_the_first_and_when_the_port_closes(rigs) -> None:
+    port = Port([BANNER, b"rail=1V\r\n"])
+    rig = rigs(port)
+    logged(rig, 2)
+    assert rig.source.lines()[1].values == []
+    rig.clock.ns += 2 * S
+    # The stream writes them on a timer of its own, in real time.
+    wait_until(lambda: rig.source.lines()[1].values == ["rail"])
+    port.chunks.append(zephyr(1.0))
+    logged(rig, 3)
+    assert rig.source.lines()[2].values == []
     rig.ask("release")
-    assert None in rig.emitter.flushes
+    assert (rig.source.lines()[2].event, rig.source.lines()[2].values) == ("dut/dcdc", ["rail"])
 
 
 def test_stop_during_backoff(rigs) -> None:
@@ -1731,18 +1829,21 @@ def test_stop_during_a_command(rigs) -> None:
 
 
 def test_demo_device_end_to_end() -> None:
-    emitter = RecordingEmitter()
+    source = RecordingSource()
     worker = PortWorker(
-        port_config(connection="demo", name="demo"), emitter, SETTINGS, open_transport
+        port_config(connection="demo", name="demo"),
+        cast(zelos_sdk.TraceSource, source),
+        SETTINGS,
+        open_transport,
     )
     worker.start()
     try:
-        wait_until(lambda: any(p.module == "dcdc" for p in emitter.lines()))
+        wait_until(lambda: any(row.name == "dcdc" for row in source.lines()))
         reply = worker.request("command", text="dcdc limit get").result(timeout=3)
         assert reply["reply"] == ["limit: 4.5 A"]
         assert reply["ended_by"] == "prompt"
-        assert any(v.name == "rail" for p in emitter.lines() for v in p.values)
     finally:
         worker.stop()
         worker.join(1.0)
     assert not worker.is_alive()
+    assert any("rail" in row.values for row in source.lines())

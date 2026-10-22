@@ -17,7 +17,6 @@ from zelos_sdk.actions import ActionExecutionError, ValidationError
 
 from tests.conftest import Board, FakeTransport, Recording, listed_port, run, wait_until
 from zelos_extension_serial import actions, baud, config, discovery, transport, worker
-from zelos_extension_serial.emitter import Emitter
 from zelos_extension_serial.transport import open_transport
 from zelos_extension_serial.worker import PortWorker
 
@@ -198,7 +197,7 @@ def test_list_ports_shows_the_device_node_a_linux_by_id_path_links_to(
     ]
 
 
-def test_a_windows_cdc_device_is_labelled_and_named_without_its_com_port_twice(
+def test_a_windows_cdc_device_is_labeled_and_named_without_its_com_port_twice(
     devices: list[serialx.SerialPortInfo],
 ) -> None:
     devices.append(
@@ -606,13 +605,11 @@ def ports(trace_file: Recording, tmp_path: Path, fake: FakeTransport) -> Iterato
     tcp = {"connection": "tcp", "host": "127.0.0.1", "tcp_port": 4001, "name": "fake"}
     path.write_text(json.dumps({"ports": [demo, tcp]}))
     settings = config.load(path)
-    emitter = Emitter(trace_file.source)
     # A test that ran the app leaves its stopped workers here.
     actions.workers.clear()
     for cfg in settings.ports:
-        emitter.add_port(cfg.name)
         opener = open_transport if cfg.name == "demo" else (lambda _cfg, budget_s=None: fake)
-        actions.workers[cfg.name] = PortWorker(cfg, emitter, settings, open=opener)
+        actions.workers[cfg.name] = PortWorker(cfg, trace_file.source, settings, open=opener)
         actions.workers[cfg.name].start()
     for name in actions.workers:
         wait_until(lambda name=name: run("get_state", port=name)["state"] == "open")

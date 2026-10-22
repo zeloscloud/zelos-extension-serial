@@ -8,9 +8,9 @@ _ERASE = b"\x1b[8D\x1b[J"
 _YELLOW, _RED, _RESET = "\x1b[1;33m", "\x1b[1;31m", "\x1b[0m"
 
 
-def _zephyr(ms: int, tag: str, module: str, message: str, colour: str, level: str) -> Printed:
+def _zephyr(ms: int, tag: str, module: str, message: str, color: str, level: str) -> Printed:
     stamp = f"[00:00:{ms // 1000:02d}.{ms % 1000:03d},000]"
-    text = f"{stamp} {colour}<{tag}> {module}: {message}{_RESET}\r\n"
+    text = f"{stamp} {color}<{tag}> {module}: {message}{_RESET}\r\n"
     # Played at 1.5 times device time, so host and device spacing differ.
     return Printed(
         0.05 + 1.5 * ms / 1000,
@@ -50,8 +50,8 @@ def _lines(rows: list[tuple[bytes, Row | None]], gap_s: float) -> list[Printed]:
 
 
 def _esp(level: str, ms: int, tag: str, message: str) -> tuple[bytes, Row]:
-    letter, colour = {"info": ("I", "32"), "warn": ("W", "33"), "error": ("E", "31")}[level]
-    data = f"\x1b[0;{colour}m{letter} ({ms}) {tag}: {message}\x1b[0m\n".encode()
+    letter, color = {"info": ("I", "32"), "warn": ("W", "33"), "error": ("E", "31")}[level]
+    data = f"\x1b[0;{color}m{letter} ({ms}) {tag}: {message}\x1b[0m\n".encode()
     return data, Row(level, tag, f"{tag}: {message}")
 
 

@@ -4,9 +4,9 @@ import re
 import time
 
 import pytest
+from zelos_log_lines.lines import LineSplitter
 
 from zelos_extension_serial.demo import DemoDevice
-from zelos_extension_serial.lines import LineSplitter
 
 PROMPT = b"\x1b[1;32muart:~$ \x1b[m"
 ERASE = b"\x1b[8D\x1b[J"

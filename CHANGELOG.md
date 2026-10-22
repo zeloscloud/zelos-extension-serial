@@ -3,6 +3,19 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Read more microcontroller log formats: ESPHome, esp-println, the nRF5 SDK, FreeRTOS, NuttX, RIOT, Contiki-NG, Mynewt, Pigweed, Particle, CircuitPython, defmt, and Zephyr's minimal mode as MCUboot prints it.
+- Read the log lines of Linux and application loggers, with their level, logger and message: spdlog, Boost.Log, glog, Python logging, Rust's env_logger and tracing, logback, log4j2, zap, Go's log and slog, logfmt, JSON lines, ROS 2, Android logcat, and syslog as journalctl, BusyBox and OpenWrt print it. A syslog record's program is the module, and the line it carries is read again, so a service's spdlog line keeps its own level.
+
+### Changed
+
+- Read log lines with zelos-log-lines, the parser Zelos log extensions share. Get State names the labeled Arduino plotter habit `plotter-labeled`, not `plotter-labelled`.
+- Log a crash printed over several lines, such as an ESP-IDF panic or a stack trace, as one row at the crash's level: `error`, or `critical` for a fatal stop. Each of its lines was a row of its own at `info`.
+- Write a log row once the next record starts or the port is quiet for 100 ms, so the lines of a crash can join it.
+
 ## [0.3.0] - 2026-10-13
 
 ### Added

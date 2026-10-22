@@ -14,20 +14,15 @@ from collections import deque
 from collections.abc import Callable
 from typing import Any, Literal
 
-from .clock import DeviceClock
+import zelos_sdk
+from zelos_log_lines.lines import Line
+from zelos_log_lines.records import Level, LogRecord
+from zelos_log_lines.stream import LogStream, StreamState
+from zelos_log_lines.values import is_teleplot
+
 from .config import PortConfig, Settings
 from .discovery import PortNotFound, list_ports, present
-from .emitter import Emitter
-from .formats import (
-    RepeatTracker,
-    ShapeTracker,
-    is_prompt,
-    is_prompt_redraw,
-    is_teleplot,
-    log_after_prompt,
-    parse,
-)
-from .lines import Line, LineSplitter
+from .prompts import is_prompt, is_prompt_redraw, log_after_prompt
 from .transport import (
     Fault,
     Opener,
@@ -40,7 +35,6 @@ from .transport import (
 
 logger = logging.getLogger(__name__)
 
-_US = 1_000
 _MS = 1_000_000
 _S = 1_000_000_000
 _BACKOFF_MIN_NS = 500 * _MS
@@ -112,7 +106,7 @@ class PortWorker(threading.Thread):
     def __init__(
         self,
         cfg: PortConfig,
-        emitter: Emitter,
+        source: zelos_sdk.TraceSource,
         settings: Settings,
         open: Opener = open_transport,
         # Not monotonic_ns: on Windows, Python 3.11's ticks every 15.6 ms.
@@ -121,7 +115,6 @@ class PortWorker(threading.Thread):
         # Daemon: a thread stuck in a driver call must not hold the process past the stop bound.
         super().__init__(name=f"serial-{cfg.name}", daemon=True)
         self._cfg = cfg
-        self._emitter = emitter
         self._settings = settings
         self._open = open
         self._now = now
@@ -129,7 +122,8 @@ class PortWorker(threading.Thread):
         self._wall_offset_ns = time.time_ns() - now()
         # Not `_stop`: threading.Thread uses that name internally.
         self._stopping = threading.Event()
-        self._lock = threading.Lock()
+        # Requests, and what the stream's callbacks touch from its timer; never held into it.
+        self._lock = threading.RLock()
         self._requests: deque[tuple[RequestKind, dict[str, Any], _Future]] = deque()
         self._handlers: dict[RequestKind, Callable[..., dict[str, Any] | None]] = {
             "send": self._do_send,
@@ -141,9 +135,17 @@ class PortWorker(threading.Thread):
             "sample": self._do_sample,
         }
 
-        self._splitter = LineSplitter(now=now)
-        self._shape, self._repeat = ShapeTracker(), RepeatTracker()
-        self._clock = DeviceClock()
+        self._stream = LogStream(
+            source,
+            cfg.name,
+            notes="serial",
+            device_time=settings.time_source != "host",
+            values=cfg.values,
+            keep=self._keep,
+            on_line=self._on_line,
+            joins_midway=True,
+            now=now,
+        )
         self._transport: Transport | None = None
         self._writing: Transport | None = None
         self._state: _State = "connecting"
@@ -157,17 +159,12 @@ class PortWorker(threading.Thread):
         self._open_log = _Throttle()
         self._error_log = _Throttle()
         self._presence_logged = False
-        # Whether the next line may be the rest of one only partly seen: the first after an open,
-        # or the one after a partial line.
-        self._mid_line = False
         # Whether a byte arrived since the port opened.
         self._heard = False
         self._rx_ns = self._checked_ns = 0
-        self._last_ns = 0
         self._command: _Command | None = None
         self._acquiring: _Future | None = None
         self._acquire_by_ns = 0
-        # How long the last open took: a host's addresses each wait out the connect timeout.
         self._lines: deque[str] = deque(maxlen=_KEPT)
         self._chunks: deque[bytes] = deque(maxlen=_KEPT)
         self._sent: deque[tuple[str, int]] = deque(maxlen=_SENT)
@@ -175,7 +172,6 @@ class PortWorker(threading.Thread):
             (
                 "rx_bytes",
                 "tx_bytes",
-                "lines",
                 "prompts",
                 "echoes",
                 "reconnects",
@@ -214,9 +210,7 @@ class PortWorker(threading.Thread):
                 try:
                     data = self._read(buf)
                     self._anchor()
-                    self._on_lines(self._splitter.feed(data, self._host_ns()))
-                    self._on_lines(self._splitter.idle())
-                    self._emitter.flush(self._cfg.name, self._host_ns())
+                    self._stream.feed(data, self._host_ns())
                     self._serve()
                     self._advance_command()
                     self._advance_acquire()
@@ -238,14 +232,6 @@ class PortWorker(threading.Thread):
         wall = time.time_ns()
         if abs(wall - self._host_ns()) > _ANCHOR_NS:
             self._wall_offset_ns = wall - self._now()
-
-    def _on_lines(self, lines: list[Line]) -> None:
-        for line in lines:
-            # One odd line must not cost the lines after it.
-            try:
-                self._on_line(line)
-            except Exception as e:
-                self._unexpected(e)
 
     def _unexpected(self, error: Exception) -> None:
         self._counters["errors"] += 1
@@ -304,11 +290,11 @@ class PortWorker(threading.Thread):
             else:
                 self._state, self._fault, self._error = "failed", fault, str(e)
                 logger.error("%s: cannot open %s: %s", cfg.name, self._where, e)
-                self._settle_acquire(self._health())
+                self._settle_acquire(self._health(self._stream.state()))
                 return
             # An open that used the rest of the wait settles the acquire now, with its reason.
             if self._acquiring is not None and self._now() >= self._acquire_by_ns:
-                self._settle_acquire(self._health())
+                self._settle_acquire(self._health(self._stream.state()))
             return
         # Judged gone later only if present now: Windows may not list a virtual port, such as
         # com0com.
@@ -318,7 +304,7 @@ class PortWorker(threading.Thread):
         if self._lost:
             self._counters["reconnects"] += 1
         self._lost = False
-        self._mid_line, self._heard = True, False
+        self._heard = False
         self._rx_ns = self._checked_ns = self._now()
         verb = "acquired" if self._acquiring is not None else "connected to"
         self._note("info", f"{verb} {self._where}")
@@ -337,7 +323,7 @@ class PortWorker(threading.Thread):
         # Retrying cannot fix a permission; the other faults pass, as when a board re-enumerates
         # after a flash. Only when asked: health for a missing device lists every port.
         if self._acquiring is not None and fault == "permission":
-            self._settle_acquire(self._health())
+            self._settle_acquire(self._health(self._stream.state()))
 
     def _lose(self) -> None:
         self._close()
@@ -370,57 +356,46 @@ class PortWorker(threading.Thread):
             return True
 
     def _close(self) -> None:
+        self._close_port()
+        # The line the device was printing as the port went, such as a crash, is logged now.
+        try:
+            self._stream.end()
+        except Exception as e:
+            self._unexpected(e)
+
+    def _close_port(self) -> None:
         transport, self._transport = self._transport, None
         if transport is not None:
             # A port that is already gone can fail to close; it is closed either way.
             with contextlib.suppress(Exception):
                 transport.close()
-        # The line the device was printing as the port went, such as a crash, is logged now.
-        self._on_lines(self._splitter.flush())
-        self._splitter.reset()
-        # Also runs on the way out, where an error must not skip failing the waiting requests.
-        try:
-            self._emitter.flush(self._cfg.name)
-        except Exception as e:
-            self._unexpected(e)
 
-    def _on_line(self, line: Line) -> None:
+    def _keep(self, line: Line) -> Line | None:
         # A piece of a long line is never a whole prompt or echo.
-        if not line.cut:
+        if line.cut:
+            return line
+        with self._lock:
             if self._prompt_or_echo(line):
-                # A whole echo or prompt ends at a line end, so the next line starts whole.
-                if not line.partial:
-                    self._mid_line = False
-                return
+                return None
             if (log := log_after_prompt(line.text, self._cfg.prompt)) is not None:
                 self._on_prompt(whole=True)
-                line = dataclasses.replace(line, text=log)
-        # Sample returns lines as the log has them: no prompts, no echoes.
-        self._lines.append(line.text)
-        parsed = parse(line.text, line.colour, self._shape, self._repeat)
-        mid_line, self._mid_line = self._mid_line, line.partial
-        # Values only from whole lines: a pause or a cut can split `rail=13.64V` into `rail=13.6`,
-        # and an unprefixed line after the open or a pause is probably the rest of one.
-        partial = line.partial or line.cut or (mid_line and not parsed.prefixed)
-        if parsed.values and (partial or not self._cfg.values):
-            parsed = dataclasses.replace(parsed, values=())
-        command = self._command
-        # Log lines and Teleplot points are the device's background output, not the reply.
-        if (
-            command is not None
-            and not parsed.prefixed
-            and parsed.rule != "zephyr-dropped"
-            and not is_teleplot(line.text)
-        ):
-            command.heard = True
-            command.reply.append(line.text)
-        t = line.host_ns
-        if self._settings.time_source == "auto" and parsed.device_ns is not None:
-            t, restarted = self._clock.map(t, parsed.device_ns)
-            if restarted:
-                self._note("warn", "device restarted", t)
-        self._emitter.line(self._cfg.name, parsed, self._stamp(t))
-        self._counters["lines"] += 1
+                return dataclasses.replace(line, text=log)
+        return line
+
+    def _on_line(self, line: Line, record: LogRecord) -> None:
+        with self._lock:
+            # Sample returns lines as the log has them: no prompts, no echoes.
+            self._lines.append(line.text)
+            command = self._command
+            # Log lines and Teleplot points are the device's background output, not the reply.
+            if (
+                command is not None
+                and not record.prefixed
+                and record.format != "zephyr-dropped"
+                and not is_teleplot(line.text)
+            ):
+                command.heard = True
+                command.reply.append(line.text)
 
     def _prompt_or_echo(self, line: Line) -> bool:
         """Count a prompt or the echo of a send; True when the line is one."""
@@ -456,19 +431,10 @@ class PortWorker(threading.Thread):
                 return sent
         return None
 
-    def _stamp(self, t: int) -> int:
-        """Strictly increasing per port, so lines from one read keep their console order.
-
-        1 µs apart, not 1 ns: a trace reader's float seconds resolve only ~240 ns at today's epoch.
-        """
-        self._last_ns = max(t, self._last_ns + _US)
-        return self._last_ns
-
-    def _note(self, level: str, message: str, t: int | None = None, name: str = "serial") -> None:
-        t = self._stamp(self._host_ns() if t is None else t)
+    def _note(self, level: Level, message: str, name: str = "serial") -> None:
         # Marked, so a Log panel that shows only the message does not show it as device output.
         mark = "> " if name == "tx" else f"[{name}] "
-        self._emitter.note(self._cfg.name, level, mark + message, t, name=name)
+        self._stream.note(level, mark + message, self._host_ns(), name=name)
 
     def _serve(self) -> None:
         while self._requests and not self._stopping.is_set():
@@ -483,18 +449,21 @@ class PortWorker(threading.Thread):
                     future.set_result(reply)
 
     def _advance_command(self) -> None:
-        command = self._command
-        if command is None:
-            return
-        now = self._now()
-        # Quiet counts only after a reply line: the echo alone does not mean the device answered.
-        if command.reply and now - self._rx_ns >= _QUIET_NS:
-            self._finish("quiet")
-        elif now >= command.deadline_ns:
-            self._finish("timeout")
+        with self._lock:
+            command = self._command
+            if command is None:
+                return
+            now = self._now()
+            # Quiet counts only after a reply line: the echo alone does not mean the device
+            # answered.
+            if command.reply and now - self._rx_ns >= _QUIET_NS:
+                self._finish("quiet")
+            elif now >= command.deadline_ns:
+                self._finish("timeout")
 
     def _finish(self, ended_by: str) -> None:
-        command, self._command = self._command, None
+        with self._lock:
+            command, self._command = self._command, None
         if command is not None:
             duration_ms = (self._now() - command.start_ns) // _MS
             command.future.set_result(
@@ -515,7 +484,7 @@ class PortWorker(threading.Thread):
 
     def _advance_acquire(self) -> None:
         if self._acquiring is not None and self._now() >= self._acquire_by_ns:
-            self._settle_acquire(self._health())
+            self._settle_acquire(self._health(self._stream.state()))
 
     def _settle_acquire(self, error: str | None) -> None:
         future, self._acquiring = self._acquiring, None
@@ -530,11 +499,15 @@ class PortWorker(threading.Thread):
         self._stopping.set()
         self._state = "stopped"
         self._finish("aborted")
-        self._close()
+        self._close_port()
         self._settle_acquire("port is stopped")
         with self._lock:
             while self._requests:
                 self._requests.popleft()[2].set_exception(RuntimeError("port is stopped"))
+        try:
+            self._stream.close()
+        except Exception as e:
+            self._unexpected(e)
 
     def _port(self) -> Transport:
         if self._transport is None:
@@ -580,7 +553,8 @@ class PortWorker(threading.Thread):
             body + self._cfg.line_ending,
             lambda sent: body[:sent].decode("utf-8", "replace") or "(line ending)",
         )
-        self._sent.append((text, self._now()))
+        with self._lock:
+            self._sent.append((text, self._now()))
         return n
 
     def _do_send(self, future: _Future, text: str, hex: bool = False) -> dict[str, Any]:
@@ -597,7 +571,8 @@ class PortWorker(threading.Thread):
             raise RuntimeError("command in progress")
         self._send_line(text)
         start = self._now()
-        self._command = _Command(text, future, start, start + int(timeout_s * _S))
+        with self._lock:
+            self._command = _Command(text, future, start, start + int(timeout_s * _S))
 
     def _do_reset(self, future: _Future) -> dict[str, Any]:
         line = self._cfg.reset_line
@@ -638,26 +613,31 @@ class PortWorker(threading.Thread):
         self._acquire_by_ns = self._retry_ns + int(wait_s * _S)
 
     def _do_state(self, future: _Future) -> dict[str, Any]:
-        name = self._cfg.name
+        stream = self._stream.state()
         return {
             "state": self._state,
-            "health": self._health(),
+            "health": self._health(stream),
             "where": self._where,
-            "clock": self._clock_state(),
+            "clock": self._clock_state(stream),
             "counters": {
                 **self._counters,
-                "long_lines": self._splitter.long_lines,
-                **self._emitter.counters(name),
+                "lines": stream.lines,
+                "errors": self._counters["errors"] + stream.errors,
+                "long_lines": stream.long_lines,
+                "signals": len(stream.signals),
+                "late_names": stream.late_names,
+                "value_lines": stream.value_lines,
             },
-            "signals": [dataclasses.asdict(s) for s in self._emitter.signals(name)],
+            "signals": [dataclasses.asdict(s) for s in stream.signals],
         }
 
     def _do_sample(self, future: _Future, lines: int = 50, hex: bool = False) -> dict[str, Any]:
         if hex:
             return {"chunks": [chunk.hex() for chunk in list(self._chunks)[-lines:]]}
-        return {"lines": list(self._lines)[-lines:]}
+        with self._lock:
+            return {"lines": list(self._lines)[-lines:]}
 
-    def _health(self) -> str:
+    def _health(self, stream: StreamState) -> str:
         where, fault = self._where, self._fault
         if self._state == "failed":
             return f"Unsupported setting: {self._error}. Change it in the config."
@@ -708,21 +688,20 @@ class PortWorker(threading.Thread):
                 "program that opened the port first."
             )
         # Text that only a line end could release: an idle release or a prompt proves the baud.
-        pending = self._splitter.pending_since
+        pending = stream.pending_since
         if pending is not None and self._now() - pending >= _STALL_NS:
             return (
                 "Bytes arrive but no line ends. Check the baud rate, and run Sample with hex to "
                 "see the raw bytes."
             )
-        counters = self._emitter.counters(self._cfg.name)
-        lines = self._counters["lines"]
-        if self._cfg.values and lines >= 300 and not counters["value_lines"]:
+        lines = stream.lines
+        if self._cfg.values and lines >= 300 and not stream.value_lines:
             return f"No values found in {lines} lines. Run Sample to see the lines."
         health = (
-            f"Connected. {lines} lines, {counters['signals']} signals, "
-            f"{_CLOCK_HEALTH[self._clock_state()]}."
+            f"Connected. {lines} lines, {len(stream.signals)} signals, "
+            f"{_CLOCK_HEALTH[self._clock_state(stream)]}."
         )
-        late = counters["late_names"]
+        late = stream.late_names
         if late:
             # Serial/log names each one; the health says that they exist and what to do.
             names = "1 name" if late == 1 else f"{late} names"
@@ -733,7 +712,7 @@ class PortWorker(threading.Thread):
             )
         return health
 
-    def _clock_state(self) -> Literal["in use", "not seen", "host"]:
+    def _clock_state(self, stream: StreamState) -> Literal["in use", "not seen", "host"]:
         if self._settings.time_source == "host":
             return "host"
-        return "in use" if self._clock.in_use else "not seen"
+        return "in use" if stream.device_clock else "not seen"
