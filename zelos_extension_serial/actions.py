@@ -1,12 +1,13 @@
 """What the Action panel, notebooks and Zelos AI can do with the ports."""
 
+import unicodedata
 from typing import Any
 
+from zelos_log_lines.naming import unique_name
 from zelos_sdk.actions import SelectField, action, register_field_type
 
 from . import baud, discovery
 from .config import PortConfig, serial_port
-from .naming import ascii_name, unique_name
 from .worker import PortWorker, RequestKind
 
 #: Port name to its worker; app.run() fills it before the main loop starts.
@@ -22,6 +23,12 @@ _MAX_LINES = 1000
 # The first run after an install imports for 10 to 12 s on macOS; Auto-configure then listens to
 # the devices it adds for up to baud.LISTEN_S.
 _STANDALONE_TIMEOUT_S = 30
+
+
+def ascii_name(text: str) -> str | None:
+    """`text` without accents or other non-ASCII; None when no letter or digit is left."""
+    folded = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return folded if any(c.isalnum() for c in folded) else None
 
 
 def _first_port() -> str | None:

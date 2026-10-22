@@ -12,12 +12,11 @@ import threading
 import time
 
 import zelos_sdk
+from zelos_log_lines.naming import unique_name
 from zelos_sdk.hooks.logging import TraceLoggingHandler
 
 from . import ACTION_PREFIX, actions, config
 from .config import ConfigError, PortConfig, Settings
-from .emitter import Emitter
-from .naming import unique_name
 from .transport import Opener, open_transport
 from .worker import PortWorker
 
@@ -55,12 +54,10 @@ def run(
     root.addHandler(handler)
     logging.getLogger(__package__).setLevel(settings.log_level)
 
-    emitter = Emitter(source)
     actions.workers.clear()
     try:
         for cfg in _with_default_names(settings.ports):
-            emitter.add_port(cfg.name)
-            worker = PortWorker(cfg, emitter, settings, open=open)
+            worker = PortWorker(cfg, source, settings, open=open)
             worker.start()
             actions.workers[cfg.name] = worker
         # A timed wait: an untimed Event.wait() may not wake for Ctrl-C on Windows.

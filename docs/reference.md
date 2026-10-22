@@ -23,12 +23,17 @@ The marks keep these rows apart from device output where only the message shows.
 
 A line ends at CR, LF or CRLF.
 Terminal escape sequences and NUL bytes are removed.
-A line with no level of its own is logged as `error` when the device printed it in red (colour codes 31, 91, 41 or 101), and as `warn` in yellow (33, 93, 43 or 103).
-As on a terminal, a colour lasts over line ends until a code changes it, such as `0`, `39` or another colour, so every line of a red block counts.
+A line with no level of its own is logged as `error` when the device printed it in red (color codes 31, 91, 41 or 101), and as `warn` in yellow (33, 93, 43 or 103).
+As on a terminal, a color lasts over line ends until a code changes it, such as `0`, `39` or another color, so every line of a red block counts.
 
 A line longer than 4096 bytes is cut into pieces of at most 4096 bytes, never inside a UTF-8 character.
-Each piece is logged with the line's colour; no piece gives values or counts as a prompt or an echo.
+Each piece is logged with the line's color; no piece gives values or counts as a prompt or an echo.
 The `long_lines` counter counts the cuts.
+
+A record printed over several lines is one row.
+The lines of a crash, such as an ESP-IDF panic or a stack trace, join the line that starts it, and the row takes the crash's level: `error`, or `critical` for a fatal stop.
+So a row waits until the next record starts, or until the port is quiet for 100 ms.
+A partial line or a piece of a long line joins nothing.
 
 ### Partial lines and the first line
 
@@ -93,7 +98,7 @@ It holds them until one of these happens:
 - the port closes or the extension stops.
 
 Then it creates `Serial/<port>/<module>` with every name it saw, each with the unit it was first printed with, and writes the held rows with their own times.
-Log rows are never held.
+Log rows wait only for their record to end, as [Lines](#lines) says, not for these.
 So Teleplot and `label: value`, which print one name per line, record every name they print in those 2 s.
 A module's signals appear about 2 s after its first value, and Get State lists them from then on.
 A later line can leave fields out; they are empty for that sample.
@@ -119,7 +124,7 @@ A value named `time_ns` becomes the field `time_ns_2`.
 ## Formats
 
 The logged message is the line as printed, without the time stamp and the level marker.
-The README's [Recognised formats](../README.md#recognised-formats) lists the prefixes and value habits.
+The README's [Recognized formats](../README.md#recognized-formats) lists the prefixes and value habits.
 
 ### Log-prefix variants
 
@@ -323,7 +328,7 @@ The port opens as the extension opens one, with DTR and RTS on, so a board that 
 Ports already in the config are not opened.
 
 It tries 115200, 9600, 57600, 38400, 19200, 230400, 460800 and 921600 baud, in that order.
-At each baud it listens for 1 s, or until 1024 bytes arrive, and takes the first baud whose bytes read as text: at least one whole line, and at least 90% printable characters, line ends and colour codes.
+At each baud it listens for 1 s, or until 1024 bytes arrive, and takes the first baud whose bytes read as text: at least one whole line, and at least 90% printable characters, line ends and color codes.
 It listens to all new devices at once and stops after 9 s, so it ends within about 10 s however many devices there are.
 
 A device whose baud is not found keeps the default, 115200, and its port gets no `baud`:

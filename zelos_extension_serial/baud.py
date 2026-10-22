@@ -6,10 +6,10 @@ import time
 from dataclasses import dataclass
 
 from serialx import UnsupportedSetting
+from zelos_log_lines.lines import LineSplitter
 
 from . import transport
 from .config import PortConfig
-from .lines import LineSplitter
 
 #: Most common first. 115200 is the default of this extension, Zephyr, ESP-IDF and the Linux
 #: console; 9600 that of Arduino's examples. macOS sets the last two through a driver call that
@@ -96,7 +96,7 @@ def readable(data: bytes) -> bool:
     """Whether bytes are text the extension can log: at least one whole line, and almost every
     character printable."""
     text = data.decode("utf-8", "replace")
-    # ESC starts a colour code, whose other bytes are printable.
+    # ESC starts a color code, whose other bytes are printable.
     printable = sum(c in "\t\r\n\x1b" or (c.isprintable() and c != "�") for c in text)
     lines = LineSplitter().feed(data, 0)
     return printable >= _MIN_TEXT * len(text) and any(line.text.strip() for line in lines)

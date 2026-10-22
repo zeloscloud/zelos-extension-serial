@@ -218,7 +218,7 @@ def test_every_format_the_extension_reads_is_text(path: Path) -> None:
         "temp=21.5°C current=12µA\n".encode(),
         b"uart:~$ \r\nok\r\n",
     ],
-    ids=["colour", "units", "prompt"],
+    ids=["color", "units", "prompt"],
 )
 def test_text_is_readable(data: bytes) -> None:
     assert readable(data)

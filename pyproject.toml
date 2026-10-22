@@ -19,6 +19,7 @@ dependencies = [
     # rfc2217.py overrides private methods, which is only safe on a pinned minor.
     "serialx>=1.11,<1.12",
     "jsonschema>=4",
+    "zelos-log-lines>=0.1,<0.2",
 ]
 
 [project.urls]

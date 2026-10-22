@@ -4,7 +4,7 @@ Record what a device prints on its serial console: every line in the Log panel, 
 
 - 🔎 **The whole console, searchable**: each line keeps the device's time stamp, level and module.
 - 📈 **Values without a decoder**: `rail=13.8V in=4.50A` becomes `rail` in V and `in` in A.
-- 🧩 **Common formats built in**: Zephyr, ESP-IDF, Arduino on ESP32 and Linux kernel logs, plus Teleplot and the Arduino plotter.
+- 🧩 **Common formats built in**: Zephyr, ESP-IDF, Arduino on ESP32 and Linux kernel logs, Linux and application loggers such as spdlog, glog, Python, Rust and Go, plus Teleplot and the Arduino plotter.
 - ⏱️ **The device's clock**: a 20 ms loop plots 20 ms apart, not when USB delivered the line.
 - 💬 **Commands from the app**: send text, run a shell command and read its reply, or pulse a reset line.
 - ⚡ **Room for your flasher**: release the port before a flash and take it back after, from a build hook.
@@ -19,8 +19,8 @@ Record what a device prints on its serial console: every line in the Log panel, 
 | | |
 |---|---|
 | **Connections** | USB serial and other serial ports (COM, `/dev/tty*`, `usb:<vid>:<pid>:<serial>`), raw TCP, RFC 2217, and a built-in demo board |
-| **Log prefixes** | Zephyr, ESP-IDF, Arduino on ESP32, the Linux kernel, and a level word such as `ERROR:` or `[WRN]` |
-| **Values** | `key=value`, Teleplot, the Arduino plotter (labelled and bare), and a repeated `label: value` |
+| **Log prefixes** | Zephyr, ESP-IDF, ESPHome, esp-println, Arduino on ESP32, the nRF5 SDK, FreeRTOS, NuttX, RIOT, Contiki-NG, Mynewt, Pigweed, Particle, CircuitPython, defmt, the Linux kernel, a level word such as `ERROR:` or `[WRN]`, and Linux and application loggers: spdlog, glog, syslog, Python, Rust, Go, Java, ROS 2, logcat, logfmt and JSON lines |
+| **Values** | `key=value`, Teleplot, the Arduino plotter (labeled and bare), and a repeated `label: value` |
 | **Runs on** | Linux, macOS and Windows, with Zelos 26.0.8 or later |
 
 ## One line, recorded
@@ -72,15 +72,16 @@ The name is made safe for the trace: `/dev/ttyUSB0` becomes `dev_ttyUSB0`, `usb:
 
 - Shell prompts and the device's echo of sent commands are not logged.
 - The last line a device printed before it crashed is logged, as a partial line.
+- A crash printed over several lines, such as an ESP-IDF panic or a stack trace, is one row at the crash's level. So a row is written once the next record starts, or once the port is quiet for 100 ms.
 - A line that carries the device's uptime is placed by the device's clock.
 - A module's signals appear about 2 s after its first values. A name that first appears later is not recorded: `Serial/log` gets one warning. Restart the extension to include it.
 
 Line endings, prompts, the device clock and signal naming are in [Recording](https://github.com/zeloscloud/zelos-extension-serial/blob/main/docs/reference.md#recording).
 
-## Recognised formats
+## Recognized formats
 
 The extension reads the log prefix first, then looks for values in the text after the module.
-Any other line is a plain log line at level `info`.
+Any other line is a plain log line at level `info`. These tables show the common formats; [zelos-log-lines](https://pypi.org/project/zelos-log-lines/) lists every one.
 
 ### Log prefixes
 
@@ -94,6 +95,28 @@ Any other line is a plain log line at level `info`.
 | Linux kernel | `[    1.234567] usb 1-1: new device` | `usb 1-1: new device` | info | `kernel` | yes |
 | A level word | `ERROR: invalid argument` | `invalid argument` | error | none | no |
 
+Linux and application loggers print a wall-clock stamp, which never places a line: only device uptime does.
+
+| Format | Example | Logged message | Level | Module |
+|---|---|---|---|---|
+| spdlog | `[2026-10-21 14:12:01.123] [app] [warning] CAN timeout` | `CAN timeout` | warn | `app` |
+| Boost.Log | `[2026-10-21 14:12:01.161546] [0x00007f2a] [warning] CAN timeout` | `CAN timeout` | warn | none |
+| glog | `W1021 14:12:01.123456 1234 can.cc:42] CAN timeout` | `CAN timeout` | warn | `can`, with file and line |
+| Python logging | `WARNING:can.bus:CAN timeout` | `CAN timeout` | warn | `can.bus` |
+| Rust env_logger | `[2026-10-21T14:12:01Z WARN can_bus] CAN timeout` | `CAN timeout` | warn | `can_bus` |
+| Rust tracing | `2026-10-21T14:12:01.289898Z  WARN can_bus: CAN timeout` | `CAN timeout` | warn | `can_bus` |
+| logback | `14:12:01.123 [main] WARN com.acme.Can -- CAN timeout` | `CAN timeout` | warn | `com.acme.Can` |
+| log4j2 | `2026-10-21T14:12:01.123Z main WARN CAN timeout` | `CAN timeout` | warn | none |
+| zap | `2026-10-21T14:12:01.123Z` tab `WARN` tab `can.go:42` tab `CAN timeout` | `CAN timeout` | warn | none, with file and line |
+| Go log and slog | `2026/10/21 14:12:01 WARN CAN timeout` | `CAN timeout` | warn | none |
+| logfmt | `time=2026-10-21T14:12:01Z level=WARN msg="CAN timeout" bus=1` | `CAN timeout` | warn | `logger` when present |
+| JSON lines | `{"level":"warn","msg":"CAN timeout","logger":"can"}` | `CAN timeout` | warn | `logger`, `name` or `target` |
+| ROS 2 | `[WARN] [1729519921.123] [can_node]: CAN timeout` | `CAN timeout` | warn | `can_node` |
+| Android logcat | `10-21 14:12:01.123  1234  1256 W CanHal: CAN timeout` | `CAN timeout` | warn | `CanHal` |
+| syslog | `Oct 21 14:12:01 board app[332]: [2026-10-21 14:12:01.123] [warning] CAN timeout` | `CAN timeout` | warn, from the line it carries | `app` |
+
+A syslog record names the program and carries another line, which is read again: its own level wins over the record's facility.level or priority.
+
 ### Values
 
 The first habit that matches the text after the module wins.
@@ -102,7 +125,7 @@ The first habit that matches the text after the module wins.
 |---|---|---|
 | Teleplot | `>myValue:1234§km²` | `myValue` = 1234, unit `km²` |
 | key=value | `rail=13.65V in=4.50A limit=4.5A temp=35.0C` | `rail` = 13.65 V, `in` = 4.5 A, `limit` = 4.5 A, `temp` = 35 C |
-| Arduino plotter, labelled | `label_1:1,label_2:2` | `label_1` = 1, `label_2` = 2 |
+| Arduino plotter, labeled | `label_1:1,label_2:2` | `label_1` = 1, `label_2` = 2 |
 | Arduino plotter, bare | `5,6` | `value1` = 5, `value2` = 6, from the third line in a row with the same number of columns |
 | label: value | `Voltage: 3.29 V` | `Voltage` = 3.29 V, from the second line with the same label; the label has at most three words and no hex literal |
 

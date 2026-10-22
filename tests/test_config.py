@@ -533,8 +533,8 @@ def test_error_message_joins_the_problems(tmp_path: Path) -> None:
             'Settings, Log level: must be "DEBUG", "INFO", "WARNING" or "ERROR".',
         ),
         (
-            {"ports": [DEMO], "advanced": {"colour": 1}},
-            "Settings, Advanced (all ports): unknown setting colour.",
+            {"ports": [DEMO], "advanced": {"color": 1}},
+            "Settings, Advanced (all ports): unknown setting color.",
         ),
         (
             {"ports": [DEMO], "advanced": {"time_source": 1}},
@@ -570,9 +570,9 @@ def test_every_enum_label_list_matches_its_enum() -> None:
             for value in node:
                 yield from walk(value)
 
-    labelled = [n for n in walk(SCHEMA) if "ui:enumNames" in n]
-    assert labelled
-    for node in labelled:
+    labeled = [n for n in walk(SCHEMA) if "ui:enumNames" in n]
+    assert labeled
+    for node in labeled:
         assert len(node["ui:enumNames"]) == len(node["enum"]), node["title"]
 
 
