@@ -1,5 +1,5 @@
 name = "Serial"
-version = "0.4.0"
+version = "0.4.1"
 description = "Record device consoles over UART, USB serial, TCP or RFC 2217: every line becomes a log event with its level and module, and every printed value a signal."
 author = "Zelos"
 repository = "https://github.com/zeloscloud/zelos-extension-serial"

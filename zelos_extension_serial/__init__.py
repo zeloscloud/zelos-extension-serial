@@ -5,4 +5,4 @@
 ACTION_PREFIX = "Serial"
 
 #: Equals `version` in extension.toml and pyproject.toml; tests/test_packaging.py pins it.
-__version__ = "0.4.0"
+__version__ = "0.4.1"
