@@ -3,6 +3,12 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Fill in a new settings form with Auto-configure. The form's blank port makes way for the USB serial devices found, or for the demo device when there are none. It was kept, so a new form with no devices got no demo device, and found devices sat beside an entry that still needed a port.
+
 ## [0.4.0] - 2026-10-22
 
 ### Added

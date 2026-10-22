@@ -96,7 +96,7 @@ def list_ports() -> dict[str, Any]:
 @action.object("config", title="Configuration", properties={}, required=False)
 def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
     # The form sends its unsaved config from 26.0.9; 26.0.8 sends none and replaces its ports.
-    ports: list[Any] = list((config or {}).get("ports") or [])
+    ports: list[Any] = [p for p in (config or {}).get("ports") or [] if not _blank(p)]
     # Only a serial entry names a device: a network entry can keep the port of the serial entry
     # the form changed it from.
     fields = [
@@ -130,6 +130,16 @@ def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
         ports = [{"connection": "demo"}]
         message = "No USB serial devices found; added the demo device."
     return {"status": "success", "config": {"ports": ports}, "message": message}
+
+
+def _blank(port: Any) -> bool:
+    """A serial entry with nothing typed in, as a new form holds one."""
+    return (
+        isinstance(port, dict)
+        and port.get("connection", "serial") == "serial"
+        and not port.get("port")
+        and not port.get("name")
+    )
 
 
 def _added(added: list[tuple[dict[str, Any], PortConfig]], heard: list[baud.Heard]) -> str:
