@@ -61,6 +61,7 @@ def read_events(path: Path) -> dict[str, list[dict[str, Any]]]:
                     {
                         key.removeprefix(prefix) if key.startswith(prefix) else TIME: value
                         for key, value in row.items()
+                        if key != "time_ns"
                     }
                     for row in rows
                 ]
