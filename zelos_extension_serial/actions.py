@@ -62,6 +62,7 @@ _port = action.input(
     timeout=_STANDALONE_TIMEOUT_S,
     standalone=True,
     read_only=True,
+    hidden=True,
 )
 def list_ports() -> dict[str, Any]:
     choices = []
@@ -92,6 +93,7 @@ def list_ports() -> dict[str, Any]:
     timeout=_STANDALONE_TIMEOUT_S,
     standalone=True,
     read_only=True,
+    hidden=True,
 )
 @action.object("config", title="Configuration", properties={}, required=False)
 def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:

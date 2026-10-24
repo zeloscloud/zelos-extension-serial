@@ -72,14 +72,24 @@ def test_names_timeouts_and_standalone_flags() -> None:
     }
 
 
-def test_only_actions_that_change_nothing_are_read_only() -> None:
-    """Zelos AI runs a read-only action without asking, so each one is a deliberate choice."""
+def test_every_action_has_its_read_only_and_hidden_flags() -> None:
+    """Pins each action's flags, so a new action or a changed flag is a deliberate choice."""
     declared = {
-        name
+        name: (obj._action.read_only, obj._action.hidden)
         for name, obj in vars(actions).items()
-        if hasattr(obj, "_action") and obj._action.read_only
+        if hasattr(obj, "_action")
     }
-    assert declared == {"list_ports", "auto_config", "get_state", "sample"}
+    assert declared == {
+        "list_ports": (True, True),
+        "auto_config": (True, True),
+        "send": (False, False),
+        "command": (False, False),
+        "reset": (False, False),
+        "release": (False, False),
+        "acquire": (False, False),
+        "get_state": (True, False),
+        "sample": (True, False),
+    }
 
 
 def test_python_defaults_equal_the_form_defaults() -> None:
