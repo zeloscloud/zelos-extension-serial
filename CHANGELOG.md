@@ -3,6 +3,12 @@
 All notable changes to this extension are documented here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the extension uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Needs Zelos 26.0.10 or later.
+
 ## [0.4.1] - 2026-10-22
 
 ### Fixed
@@ -48,7 +54,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Fixed
 
-- Keep a colour on until a code changes it, as a terminal does: a device that printed one red code and then several lines had only the first logged as `error`.
+- Keep a color on until a code changes it, as a terminal does: a device that printed one red code and then several lines had only the first logged as `error`.
 - Read a key=value at the end of a sentence, such as `timeout=500ms.` or `hum=40%.`: a value with a unit before the period was dropped, while `count=5.` was read. Treat `idVendor=0403.` as hex, as `idVendor=0403` is, instead of recording 403.
 - Report a Reset line of `rts` with flow control `rts/cts` as a config mistake. Flow control drives RTS, so on a CP2102 RTS stayed asserted whatever RTS at open said, and Reset Device answered `ok` without a pulse and left RTS deasserted.
 - On macOS, report a baud the driver refuses, such as 250000, as `Unsupported setting: baud 250000 is not supported.` serialx ignored the refusal, so the port opened at 115200 and reported nothing.
@@ -67,7 +73,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ### Added
 
 - Record local serial ports, raw TCP ports and RFC 2217 ports, plus a demo device that prints like a Zephyr board. Runs on Linux, macOS and Windows, and needs Zelos 26.0.8 or later.
-- Log every line to `Serial/<port>/log` as the device printed it, with its time stamp and level marker moved to their own columns and its module as the name. Read the log prefixes of Zephyr (uptime, date and tick stamps), ESP-IDF, Arduino on ESP32 and the Linux kernel, and a leading level word. Mark sent text with `> ` and the extension's notes with `[serial] `. Take the level of an unprefixed line from its colour. Leave shell prompts and the echo of sent text out of the log.
+- Log every line to `Serial/<port>/log` as the device printed it, with its time stamp and level marker moved to their own columns and its module as the name. Read the log prefixes of Zephyr (uptime, date and tick stamps), ESP-IDF, Arduino on ESP32 and the Linux kernel, and a leading level word. Mark sent text with `> ` and the extension's notes with `[serial] `. Take the level of an unprefixed line from its color. Leave shell prompts and the echo of sent text out of the log.
 - Log a line still pending when the port closes, and cut a line longer than 4096 bytes into logged pieces.
 - Turn printed values into signals, one event per module: Teleplot, `key=value`, the Arduino plotter's labelled and bare forms, and a repeated `label: value`. Hold a module's rows for up to 2 s, so its event gets every name, even from a format that prints one name per line. Give no values from a line of hex, a hex dump after a log prefix, a partial line, the rest of a line after a pause, or a piece of a long line.
 - Place lines that carry the device's uptime on the host clock by that uptime, and note a device restart.

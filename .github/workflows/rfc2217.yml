@@ -1,7 +1,7 @@
 name: RFC 2217
 
 on:
-  # As in CI.yml: other branches run through their pull request, tags through the Release workflow.
+  # Other branches run through their pull request, tags through the Release workflow.
   push:
     branches: [main]
   pull_request:
@@ -11,8 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Not github.workflow: called from Release, that is "Release", and the group would match the
-  # caller's own.
+  # Not github.workflow: when Release calls this, that is "Release", and the run would wait on itself.
   group: rfc2217-${{ github.ref }}
   cancel-in-progress: true
 

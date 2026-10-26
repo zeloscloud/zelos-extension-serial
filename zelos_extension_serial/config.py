@@ -32,8 +32,7 @@ def _fields(connection: str) -> tuple[dict[str, Any], dict[str, Any]]:
     return props, advanced
 
 
-# Every setting's default, so a connection that does not take one (TCP has no baud) still fills
-# PortConfig.
+# Every setting's default, so a connection without one (TCP has no baud) still fills PortConfig.
 _DEFAULTS = {
     name: schema.get("default")
     for c in _CONNECTIONS
