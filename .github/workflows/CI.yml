@@ -1,10 +1,8 @@
 name: CI
 
 on:
-  # Other branches run through their pull request, so a pushed branch runs once. Tags run through
-  # the Release workflow, which calls this one.
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
   workflow_call:
 
@@ -12,8 +10,7 @@ permissions:
   contents: read
 
 concurrency:
-  # Not github.workflow: in a called workflow that is the caller's name, so the group would
-  # match the caller's own and the run would wait on itself.
+  # Not github.workflow: when Release calls this, that is "Release", and the run would wait on itself.
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
@@ -27,29 +24,44 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11"]
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10.2.0
+      # Agent runtime: uv installs the Python version pinned in .python-version.
+      - uses: astral-sh/setup-uv@v10.3.3
+        if: hashFiles('pyproject.toml') != ''
         with:
           enable-cache: true
 
-      - uses: actions/setup-python@v7
+      # Web project (tab and panels)
+      - uses: actions/setup-node@v7
+        if: hashFiles('web/package.json') != ''
         with:
-          python-version: ${{ matrix.python-version }}
+          node-version-file: web/.nvmrc
 
       - uses: extractions/setup-just@v4
 
-      # A stale lock ships in the marketplace package and fails at install on other platforms.
-      - name: Verify uv.lock is in sync with pyproject.toml
-        run: uv lock --locked
+      # The release packages on Linux, so CI installs the CLI and packages there.
+      - name: Install Zelos CLI
+        if: runner.os == 'Linux'
+        run: |
+          curl -fsSL https://release.zeloscloud.io/cli/install.sh | bash
+          echo "$HOME/.zelos/bin" >> "$GITHUB_PATH"
+        env:
+          INSTALLER_NO_MODIFY_PATH: 1
 
       - name: Install dependencies
         run: just ci-install
 
-      - name: Format, lint, types, tests
+      - name: Check formatting and lint, and type-check the web project
         run: just check
+
+      - name: Run tests
+        run: just test
+
+      - name: Build and package extension
+        if: runner.os == 'Linux'
+        run: just package
 
       # Linux only: the measurements need a pseudo-terminal and a quiet runner to mean anything.
       - name: Throughput with zero loss

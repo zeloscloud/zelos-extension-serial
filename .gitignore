@@ -1,87 +1,26 @@
-# Python bytecode
+# Python
 __pycache__/
 *.py[cod]
-*.pyo
-*$py.class
-*.so
-
-# Virtual environments / uv state
 .venv/
-.venv*/
-.uv/
-
-# Distribution / packaging
-.Python
-build/
-dist/
-develop-eggs/
-eggs/
-.eggs/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
-pip-wheel-metadata/
-extension.egg-info/
-*.tar.gz
-
-# Tooling caches
-.ty_cache/
 .pytest_cache/
 .ruff_cache/
-.mypy_cache/
-.dmypy.json
-dmypy.json
-.pytype/
-.pyre/
-.cache
-.nox/
-.hypothesis/
 
-# Coverage reports
-.coverage
-.coverage.*
-coverage.xml
-htmlcov/
-*.cover
-*.py.cover
+# Node
+node_modules/
 
-# Logs and temp files
-*.log
-*.tmp
-*.swp
-*.swo
+# Build output and packages
+dist/
+*.tar.gz
+actions.json
 
-# OS / editor junk
+# Editors and OS
 .DS_Store
 .idea/
+*.swp
 
-# Environments
+# Local environment
 .env
 .envrc
 
-# PyPI configuration
-.pypirc
-
-# Installer logs
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Translations
-*.mo
-*.pot
-
-# Sphinx documentation
-docs/_build/
-docs/source
-
 # Zelos
-.last_config
 config.json
-
-# Standalone action inventory: regenerated from the code on every package run.
-actions.json

@@ -730,7 +730,7 @@ requires-dist = [
     { name = "jsonschema", specifier = ">=4" },
     { name = "serialx", specifier = ">=1.11,<1.12" },
     { name = "zelos-log-lines", specifier = ">=0.1,<0.2" },
-    { name = "zelos-sdk", specifier = ">=0.0.13a1,<0.1" },
+    { name = "zelos-sdk", specifier = ">=0.0.13a1" },
 ]
 
 [package.metadata.requires-dev]

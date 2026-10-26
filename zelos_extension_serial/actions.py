@@ -20,8 +20,7 @@ _ACQUIRE_TIMEOUT_S = 15.0
 _MARGIN_S = 0.5
 _MIN_COMMAND_S, _MAX_COMMAND_S = 0.1, 60.0
 _MAX_LINES = 1000
-# The first run after an install imports for 10 to 12 s on macOS; Auto-configure then listens to
-# the devices it adds for up to baud.LISTEN_S.
+# A first run imports for 10 to 12 s on macOS; Auto-configure then listens up to baud.LISTEN_S.
 _STANDALONE_TIMEOUT_S = 30
 
 
@@ -97,7 +96,6 @@ def list_ports() -> dict[str, Any]:
 )
 @action.object("config", title="Configuration", properties={}, required=False)
 def auto_config(config: dict[str, Any] | None = None) -> dict[str, Any]:
-    # The form sends its unsaved config from 26.0.9; 26.0.8 sends none and replaces its ports.
     ports: list[Any] = [p for p in (config or {}).get("ports") or [] if not _blank(p)]
     # Only a serial entry names a device: a network entry can keep the port of the serial entry
     # the form changed it from.
@@ -160,8 +158,7 @@ def _added(added: list[tuple[dict[str, Any], PortConfig]], heard: list[baud.Hear
     return f"Added {len(added)} serial devices: {'; '.join(each)}."
 
 
-# A field's `default` only fills the form; a caller that omits the field gets the Python default,
-# so each parameter repeats it.
+# A field's `default` only fills the form, so each parameter repeats it for callers that omit it.
 @action("Send", "Write text, or hex bytes, to a port.", timeout=_TIMEOUT_S)
 @_port
 @action.text("text", title="Text")

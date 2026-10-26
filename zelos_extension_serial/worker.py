@@ -296,8 +296,7 @@ class PortWorker(threading.Thread):
             if self._acquiring is not None and self._now() >= self._acquire_by_ns:
                 self._settle_acquire(self._health(self._stream.state()))
             return
-        # Judged gone later only if present now: Windows may not list a virtual port, such as
-        # com0com.
+        # Judged gone later only if present now: Windows may not list a virtual port (com0com).
         self._watched = port is not None and self._present(port)
         self._transport, self._where, self._state = transport, transport.where, "open"
         self._fault, self._open_log = None, _Throttle()
@@ -454,8 +453,7 @@ class PortWorker(threading.Thread):
             if command is None:
                 return
             now = self._now()
-            # Quiet counts only after a reply line: the echo alone does not mean the device
-            # answered.
+            # Quiet counts only after a reply line: an echo alone does not mean the device answered.
             if command.reply and now - self._rx_ns >= _QUIET_NS:
                 self._finish("quiet")
             elif now >= command.deadline_ns:

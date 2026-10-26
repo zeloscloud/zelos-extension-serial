@@ -310,7 +310,7 @@ With no port configured, leaving it out fails with `no port is configured`.
 ### List Ports
 
 List Ports returns one choice per port: its device ID, else its path, plus the label and detail that the Port list shows.
-With no port to list, it returns the message `No serial devices found. Type a path such as /dev/ttyUSB0 or COM7.`; apps newer than 26.0.9 show it under the field.
+With no port to list, it returns the message `No serial devices found. Type a path such as /dev/ttyUSB0 or COM7.`; the app shows it under the field.
 
 ### Auto-configure
 
@@ -349,9 +349,6 @@ It returns one of these messages:
 - `Added <n> serial devices: <port> at 9600 baud; <port>: <reason>, so it uses 115200.`, where each `<port>` is the new port's Name, else its Port.
 - `No new USB serial devices found.`
 - `No USB serial devices found; added the demo device.`
-
-Zelos 26.0.8 sends no config to it.
-There it returns only the devices it finds (or the demo port), which replace the ports in the form, and the app does not show the message.
 
 ### Send
 

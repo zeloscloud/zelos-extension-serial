@@ -1,8 +1,4 @@
 """Zelos Serial: record serial consoles into a Zelos trace."""
 
-#: The action namespace and the default trace source. Equals `name` in extension.toml and the
-#: name passed to `zelos_sdk.init`; tests/test_packaging.py pins all three.
+#: The action namespace and the default trace source; equals `name` in extension.toml.
 ACTION_PREFIX = "Serial"
-
-#: Equals `version` in extension.toml and pyproject.toml; tests/test_packaging.py pins it.
-__version__ = "0.4.1"

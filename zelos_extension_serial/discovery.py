@@ -16,8 +16,7 @@ _WINDOWS = sys.platform == "win32"
 _MACOS = sys.platform == "darwin"
 # Device IDs already warned about: resolve() runs on every reconnect.
 _warned_duplicates: set[str] = set()
-# On Windows the product is the driver's name for the port, which ends in the port:
-# `USB Serial Device (COM4)`.
+# On Windows the product is the port's driver name, ending in the port: `USB Serial Device (COM4)`.
 _COM_SUFFIX = re.compile(r" \(COM\d+\)$")
 
 
