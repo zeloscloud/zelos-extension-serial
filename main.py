@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Zelos Serial extension entry point.
 
 Nothing runs at import: packaging and standalone action runs import this module. Importing

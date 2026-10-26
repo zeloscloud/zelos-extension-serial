@@ -28,8 +28,7 @@ class SettingsNotAcked(Exception):
 class FixedRFC2217Serial(RFC2217Serial):
     """serialx's sync RFC 2217 client, fixed to work with ser2net 4.3.4 to 4.6.7."""
 
-    # A time.monotonic() deadline no reply wait passes; None leaves each wait at the connect
-    # timeout.
+    # A time.monotonic() deadline no reply wait passes; None leaves each at the connect timeout.
     open_deadline: float | None = None
 
     # A raw TCP console or a plain telnet server accepts the connection, then never agrees to
