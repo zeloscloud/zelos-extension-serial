@@ -21,7 +21,7 @@ Record what a device prints on its serial console: every line in the Log panel, 
 | **Connections** | USB serial and other serial ports (COM, `/dev/tty*`, `usb:<vid>:<pid>:<serial>`), raw TCP, RFC 2217, and a built-in demo board |
 | **Log prefixes** | Zephyr, ESP-IDF, ESPHome, esp-println, Arduino on ESP32, the nRF5 SDK, FreeRTOS, NuttX, RIOT, Contiki-NG, Mynewt, Pigweed, Particle, CircuitPython, defmt, the Linux kernel, a level word such as `ERROR:` or `[WRN]`, and Linux and application loggers: spdlog, glog, syslog, Python, Rust, Go, Java, ROS 2, logcat, logfmt and JSON lines |
 | **Values** | `key=value`, Teleplot, the Arduino plotter (labeled and bare), and a repeated `label: value` |
-| **Runs on** | Linux, macOS and Windows, with Zelos 26.0.8 or later |
+| **Runs on** | Linux, macOS and Windows, with Zelos 26.0.10 or later |
 
 ## One line, recorded
 
@@ -49,7 +49,7 @@ No hardware? Set **Connection** to **Demo board**, or press Auto-configure with 
 The demo board prints like a Zephyr board: a power converter's status every 20 ms and a battery warning every 5 s.
 It answers the shell commands `dcdc limit get` and `dcdc limit set <amps>`.
 
-Configure Serial from Zelos 26.0.8 or later: an older app cannot show its config form.
+Configure Serial from Zelos 26.0.10 or later.
 
 
 ## What it records
@@ -366,7 +366,6 @@ Every sentence is in [Health](https://github.com/zeloscloud/zelos-extension-seri
 - The baud and the DTR and RTS lines cannot change while a port runs, and the extension cannot send a break.
 - Lines are decoded as UTF-8; invalid bytes are replaced.
 - On Linux and macOS, the extension opens a serial port exclusively. That does not keep out a program that opened the port first, which can take every byte, or one that runs as root. Windows always opens a serial port exclusively.
-- A headless agent older than 26.0.9 that listens on a port other than 2300 does not tell its extensions where it is, so Serial cannot reach it. Run that agent on port 2300, or update it.
 - On Windows, the agent ends the extension without a final flush, so the last batch of rows may be lost.
 
 ## Development

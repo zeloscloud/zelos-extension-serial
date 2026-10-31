@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    tags: ['v*']
+    tags: ["v*"]
 
 permissions:
   contents: read
@@ -11,6 +11,8 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+# One workflow for every combination of parts. The uv setup runs when pyproject.toml exists,
+# the Node setup when web/package.json exists, and each just recipe acts on what exists.
 jobs:
   # Every OS, and every ser2net version, must be green before anything is packaged.
   ci:
@@ -25,20 +27,22 @@ jobs:
     name: Release
     needs: [ci, rfc2217]
     runs-on: ubuntu-latest
-    # The one job that writes: it creates the GitHub release.
+    # Write only here, so the called workflows do not inherit it.
     permissions:
       contents: write
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
 
       - uses: astral-sh/setup-uv@v10.2.0
+        if: hashFiles('pyproject.toml') != ''
         with:
           enable-cache: true
 
-      - uses: actions/setup-python@v7
+      - uses: actions/setup-node@v7
+        if: hashFiles('web/package.json') != ''
         with:
-          python-version: "3.11"
+          node-version-file: web/.nvmrc
 
       - uses: extractions/setup-just@v4
 
@@ -46,24 +50,24 @@ jobs:
         id: version
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
 
-      # Plain `python`, not `uv run python`: reading two TOML files must not sync the project first.
       - name: Verify version matches manifest files
+        env:
+          TAG_VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          TAG_VERSION="${{ steps.version.outputs.VERSION }}"
-
-          EXTENSION_VERSION=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('extension.toml').read_text())['version'])")
-          if [ "$EXTENSION_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: extension.toml version ($EXTENSION_VERSION) does not match tag ($TAG_VERSION)"
-            exit 1
+          check() {
+            if [ "$2" != "$TAG_VERSION" ]; then
+              echo "Error: $1 version ($2) does not match tag ($TAG_VERSION)"
+              exit 1
+            fi
+            echo "✓ $1 version matches: $2"
+          }
+          check extension.toml "$(python3 -c "import tomllib; print(tomllib.load(open('extension.toml','rb'))['version'])")"
+          if [ -f pyproject.toml ]; then
+            check pyproject.toml "$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")"
           fi
-          echo "✓ extension.toml version matches: $EXTENSION_VERSION"
-
-          PYPROJECT_VERSION=$(python -c "import tomllib,pathlib; print(tomllib.loads(pathlib.Path('pyproject.toml').read_text())['project']['version'])")
-          if [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: pyproject.toml version ($PYPROJECT_VERSION) does not match tag ($TAG_VERSION)"
-            exit 1
+          if [ -f web/package.json ]; then
+            check web/package.json "$(python3 -c "import json; print(json.load(open('web/package.json'))['version'])")"
           fi
-          echo "✓ pyproject.toml version matches: $PYPROJECT_VERSION"
 
       - name: Install Zelos CLI
         run: |
@@ -75,24 +79,26 @@ jobs:
       - name: Install dependencies
         run: just ci-install
 
-      - name: Package extension
+      - name: Check formatting, lint and type-check
+        run: just check
+
+      - name: Run tests
+        run: just test
+
+      - name: Build and package extension
         run: just package
 
-      # `zelos extensions package` names the archive after the manifest name slug: serial-<version>.tar.gz.
       - name: Verify package was created
-        run: |
-          if ! ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz 1> /dev/null 2>&1; then
-            echo "Error: Package file not found: *-${{ steps.version.outputs.VERSION }}.tar.gz"
-            exit 1
-          fi
-          echo "✓ Package created: $(ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz)"
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: ls ./*-"$VERSION".tar.gz
 
-      # The packager only warns when the action dump fails, and then ships an empty or stale
-      # actions.json. Without list_ports and auto_config in it, the Port list and Auto-configure
-      # do nothing while the extension is stopped, and nothing else in the pipeline notices.
+      # The packager only warns when the action dump fails; the config form needs both while stopped.
       - name: Verify standalone action inventory shipped
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          ARCHIVE=$(ls ./*-"${{ steps.version.outputs.VERSION }}".tar.gz)
+          ARCHIVE=$(ls ./*-"$VERSION".tar.gz)
           if ! tar -xzOf "$ARCHIVE" actions.json | jq -e '[.actions[].path] as $p
               | ("list_ports" | IN($p[])) and ("auto_config" | IN($p[]))' > /dev/null; then
             echo "Error: actions.json in $ARCHIVE does not list list_ports and auto_config"

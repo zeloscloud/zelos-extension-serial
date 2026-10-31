@@ -1,0 +1,58 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.testing.pytestEnabled": true,
+  "python.testing.pytestArgs": [
+    "tests"
+  ],
+  "python.analysis.typeCheckingMode": "basic",
+  "[python]": {
+    "editor.formatOnSave": true,
+    "editor.codeActionsOnSave": {
+      "source.organizeImports": "explicit"
+    },
+    "editor.defaultFormatter": "charliermarsh.ruff"
+  },
+  "ruff.enable": true,
+  "ruff.organizeImports": true,
+  "ruff.lint.run": "onSave",
+  "[typescript]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "eslint.enable": true,
+  "eslint.workingDirectories": [
+    "web"
+  ],
+  "prettier.prettierPath": "web/node_modules/prettier",
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/*.pyc": true,
+    ".pytest_cache": true,
+    ".ruff_cache": true,
+    "dist": true,
+    "web/node_modules": true
+  },
+  "files.watcherExclude": {
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.pytest_cache/**": true,
+    "**/.ruff_cache/**": true,
+    "**/node_modules/**": true,
+    "**/dist/**": true
+  },
+  "editor.rulers": [
+    100
+  ]
+}

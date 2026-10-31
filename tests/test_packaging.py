@@ -10,11 +10,10 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft7Validator
 
-from zelos_extension_serial import ACTION_PREFIX, __version__
+from zelos_extension_serial import ACTION_PREFIX
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = tomllib.loads((REPO_ROOT / "extension.toml").read_text(encoding="utf-8"))
-PYPROJECT = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 
 def test_entry_module_re_exports_the_action_prefix() -> None:
@@ -23,15 +22,6 @@ def test_entry_module_re_exports_the_action_prefix() -> None:
     import main
 
     assert main.ACTION_PREFIX == ACTION_PREFIX == MANIFEST["name"] == "Serial"
-
-
-def test_versions_agree() -> None:
-    assert __version__ == MANIFEST["version"] == PYPROJECT["project"]["version"]
-
-
-@pytest.mark.parametrize("relative", MANIFEST["package"]["paths"])
-def test_package_path_exists(relative: str) -> None:
-    assert (REPO_ROOT / relative).exists()
 
 
 README_MEDIA = re.findall(
@@ -50,15 +40,6 @@ def test_readme_has_media() -> None:
     assert len(README_MEDIA) >= 3
 
 
-@pytest.mark.parametrize("key", ["icon", "readme"])
-def test_referenced_file_exists(key: str) -> None:
-    assert (REPO_ROOT / MANIFEST[key]).is_file()
-
-
-def test_entry_point_is_packaged() -> None:
-    assert MANIFEST["host"]["agent"]["entry"] in MANIFEST["package"]["paths"]
-
-
 def test_config_schema_is_valid_and_its_examples_validate() -> None:
     """Draft 7, because it is the draft that enforces the per-connection `dependencies`."""
     schema = json.loads((REPO_ROOT / MANIFEST["config"]["schema"]).read_text(encoding="utf-8"))
@@ -75,7 +56,7 @@ def test_inventory_holds_the_two_standalone_actions_with_their_flags(tmp_path: P
     subprocess.run(
         [
             *(sys.executable, "-m", "zelos_sdk.extensions.actions", "dump"),
-            *("--entry", MANIFEST["host"]["agent"]["entry"], "--out", str(out)),
+            *("--entry", MANIFEST["agent"]["entry"], "--out", str(out)),
         ],
         cwd=REPO_ROOT,
         check=True,

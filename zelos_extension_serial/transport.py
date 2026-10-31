@@ -343,8 +343,7 @@ def _set_exclusive(port: serialx.BaseSerial, on: bool) -> None:
 
 
 _WINERRORS: dict[int, Fault] = {
-    # ERROR_ACCESS_DENIED: another program holds the port, or the user may not open it.
-    # CreateFile reports both the same way.
+    # ERROR_ACCESS_DENIED: CreateFile reports a port another program holds and a denied open alike.
     5: "in_use_or_denied",
     2: "not_found",  # ERROR_FILE_NOT_FOUND
 }

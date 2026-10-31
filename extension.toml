@@ -3,38 +3,27 @@ version = "0.4.1"
 description = "Record device consoles over UART, USB serial, TCP or RFC 2217: every line becomes a log event with its level and module, and every printed value a signal."
 author = "Zelos"
 repository = "https://github.com/zeloscloud/zelos-extension-serial"
-homepage = "https://github.com/zeloscloud/zelos-extension-serial"
-# The app's search and its AI read these, with the name and description; the page shows the first
-# three categories.
+# The marketplace search and Zelos AI find an extension by these words, its name and its description.
 keywords = ["serial", "uart", "usb serial", "serial port", "com port", "tty", "console", "terminal", "log", "plotter", "rs232", "rs485", "rfc2217", "ser2net", "zephyr", "esp32", "esp-idf", "arduino", "stm32", "teleplot"]
 categories = ["Embedded", "Diagnostics", "IoT", "Industrial"]
-
 icon = "assets/icon.png"
 readme = "README.md"
 
-# The Port picker (the action-choices widget) needs 26.0.8; older apps cannot render this config
-# form. Collapsed groups and Auto-configure also first ship in 26.0.8.
 [zelos]
-version = ">=26.0.8"
+version = ">=26.0.10"
 
 [config]
 schema = "config.schema.json"
 
-[host]
-type = "agent"
-
-[host.agent]
+[agent]
+runtime = "python"
 entry = "main.py"
 python_version = "3.11"
 
-# Linux and macOS: SIGTERM, then SIGKILL after this many seconds. Workers stop within 100 ms and
-# the app waits at most 1 s for them before it flushes; the rest is headroom for the SDK's atexit
-# drain. Windows: the agent terminates the job after at most 1 s, so no shutdown code runs there.
-[host.agent.stop]
+# Workers stop within 100 ms and the app's flush waits at most 1 s; the rest is the SDK's atexit drain.
+[agent.stop]
 grace_seconds = 5
 
-# The packager adds extension.toml, the readme, icon and config schema, pyproject.toml, uv.lock and
-# the generated actions.json; everything else is named here.
 [package]
 # assets/readme: an installed copy shows the README's pictures from the package, not from GitHub.
 paths = ["main.py", "zelos_extension_serial", "LICENSE", "assets/readme"]

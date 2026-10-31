@@ -8,15 +8,30 @@ repos:
       - id: check-yaml
       - id: check-json
       - id: pretty-format-json
+        exclude: ^web/
         args: [--autofix, --no-sort-keys]
-        # --autofix spreads the schema's 81 lines over 434.
-        exclude: ^config\.schema\.json$
       - id: end-of-file-fixer
       - id: trailing-whitespace
 
+  # Agent runtime: ruff runs on Python files only.
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: "v0.16.10"
     hooks:
       - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+
+  # Web project: Prettier and ESLint run from web/node_modules, at the versions package.json locks.
+  - repo: local
+    hooks:
+      - id: prettier
+        name: prettier
+        entry: web/node_modules/.bin/prettier --write --ignore-unknown
+        language: system
+        files: ^web/
+        types: [text]
+      - id: eslint
+        name: eslint
+        entry: web/node_modules/.bin/eslint --fix
+        language: system
+        files: ^web/src/.*\.(ts|tsx)$

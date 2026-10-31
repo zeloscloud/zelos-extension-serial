@@ -2,7 +2,7 @@
 name = "zelos-extension-serial"
 version = "0.4.1"
 description = "Record device consoles over UART, USB serial, TCP or RFC 2217: every line becomes a log event with its level and module, and every printed value a signal."
-authors = [{ name = "Zeloscloud", email = "info@zeloscloud.io" }]
+authors = [{ name = "Zelos", email = "support@zeloscloud.io" }]
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.11"
@@ -13,9 +13,12 @@ classifiers = [
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-    "zelos-sdk>=0.0.13a1,<0.1",
+    "zelos-sdk>=0.0.13a1",
     # rfc2217.py overrides private methods, which is only safe on a pinned minor.
     "serialx>=1.11,<1.12",
     "jsonschema>=4",
@@ -26,16 +29,16 @@ dependencies = [
 Homepage = "https://github.com/zeloscloud/zelos-extension-serial"
 Repository = "https://github.com/zeloscloud/zelos-extension-serial"
 Issues = "https://github.com/zeloscloud/zelos-extension-serial/issues"
-Documentation = "https://docs.zeloscloud.io/latest/sdk/how-to/develop-extensions/"
+Documentation = "https://docs.zeloscloud.io/app/extensions/"
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
-    "hypothesis>=6",
-    "ruff>=0.16.10",
-    "pyright>=1.1.400",
-    "pyarrow>=14",
     "pre-commit>=4.6.2",
+    "ruff>=0.16.10",
+    "hypothesis>=6",
+    "pyarrow>=14",
+    "pyright>=1.1.400",
 ]
 
 [build-system]
@@ -54,11 +57,23 @@ addopts = "--log-cli-level=INFO -m 'not perf'"
 markers = ["perf: throughput with zero loss; run with -m perf"]
 
 [tool.ruff]
-target-version = "py311"
+target-version = 'py311'
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP", "SIM", "C4", "PTH"]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+    "C4",   # flake8-comprehensions
+    "PTH",  # flake8-use-pathlib
+]
+ignore = [
+    "B008",   # function call in defaults (common in decorators)
+]
 
 [tool.pyright]
 include = ["main.py", "zelos_extension_serial", "tests"]
