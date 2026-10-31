@@ -4,7 +4,7 @@ import unicodedata
 from typing import Any
 
 from zelos_log_lines.naming import unique_name
-from zelos_sdk.actions import SelectField, action, register_field_type
+from zelos_sdk.actions import action
 
 from . import baud, discovery
 from .config import PortConfig, serial_port
@@ -30,25 +30,8 @@ def ascii_name(text: str) -> str | None:
     return folded if any(c.isalnum() for c in folded) else None
 
 
-def _first_port() -> str | None:
-    """The first configured port: the form starts on it, and a caller that omits one gets it."""
-    return next(iter(workers), None)
-
-
-@register_field_type("serial_port")
-class _PortField(SelectField):
-    """A port name field whose form default is the first configured port."""
-
-    def to_json_schema(self, current_values: dict[str, Any] | None = None) -> dict[str, Any]:
-        schema = super().to_json_schema(current_values)
-        # The SDK's `default` is fixed at import; the ports are known only once the app runs.
-        schema["default"] = _first_port()
-        return schema
-
-
-_port = action.input(
+_port = action.select(
     "port",
-    type="serial_port",
     title="Port name",
     choices=lambda *_: sorted(workers),
     required=False,
@@ -243,11 +226,14 @@ def _ask(
     action_timeout_s: float,
     **args: Any,
 ) -> dict[str, Any]:
-    """The worker's reply; its error is raised as it is."""
+    """The worker's reply; its error is raised as it is. Unset `port` is the only port."""
     if port is None:
-        port = _first_port()
-        if port is None:
+        if not workers:
             raise ValueError("no port is configured")
+        if len(workers) > 1:
+            names = ", ".join(sorted(workers))
+            raise ValueError(f"several ports are configured; set port to one of: {names}")
+        port = next(iter(workers))
     future = workers[port].request(kind, **args)
     wait_s = action_timeout_s - _MARGIN_S
     try:

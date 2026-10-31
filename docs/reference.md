@@ -302,9 +302,9 @@ Windows always opens a serial port exclusively.
 Every action except List Ports and Auto-configure takes `port`, titled **Port name**: the port's **Name** from the config, not its path.
 A port without a Name uses its default name, the `<port>` in `Serial/<port>/log`.
 
-`port` is optional.
-The form starts on the first configured port, in config order.
-A caller that leaves `port` out, such as a notebook, Zelos AI or the CLI, acts on that port.
+`port` is optional, and the form picks no port.
+A caller that leaves `port` out, such as a notebook, Zelos AI or the CLI, acts on the only configured port.
+With several ports, leaving it out fails with `several ports are configured; set port to one of: <names>`.
 With no port configured, leaving it out fails with `no port is configured`.
 
 ### List Ports
