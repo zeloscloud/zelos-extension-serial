@@ -9,6 +9,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 - Needs Zelos 26.0.10 or later.
 
+### Fixed
+
+- Send, Run Command, Reset Device, Release Port, Acquire Port, Get State and Sample without a port act on the only port. With several ports they fail and name them, instead of acting on the first one, and the action form no longer preselects the first port.
+
 ## [0.4.1] - 2026-10-22
 
 ### Fixed

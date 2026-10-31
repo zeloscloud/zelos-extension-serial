@@ -257,7 +257,7 @@ def port_fields() -> dict[str, dict[str, Any]]:
     }
 
 
-def test_the_port_field_starts_on_the_first_configured_port(
+def test_the_port_field_lists_the_ports_and_picks_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(actions, "workers", {"zeta": None, "alpha": None})
@@ -266,7 +266,7 @@ def test_the_port_field_starts_on_the_first_configured_port(
 
     assert len(fields) == 7
     for field in fields.values():
-        assert (field["enum"], field["default"]) == (["alpha", "zeta"], "zeta")
+        assert (field["enum"], field["default"]) == (["alpha", "zeta"], None)
 
 
 def test_with_no_ports_the_port_field_has_no_default(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -720,9 +720,21 @@ def test_sample_lines_and_hex(ports: None) -> None:
     assert all(bytes.fromhex(chunk) for chunk in chunks)
 
 
-def test_a_caller_that_omits_the_port_gets_the_first_configured_port(ports: None) -> None:
+def test_a_caller_that_omits_the_port_gets_the_only_port(
+    ports: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(actions, "workers", {"demo": actions.workers["demo"]})
+
     assert run("get_state")["where"] == "demo"
     assert run("send", text="dcdc limit get") == {"bytes_written": 15}
+
+
+def test_with_several_ports_a_caller_that_omits_the_port_is_told_them(ports: None) -> None:
+    for name, params in (("get_state", {}), ("send", {"text": "dcdc limit get"})):
+        assert (
+            fails(name, **params) == "several ports are configured; set port to one of: demo, fake"
+        )
+    assert run("get_state", port="demo")["counters"]["tx_bytes"] == 0
 
 
 def test_with_no_ports_a_caller_that_omits_the_port_is_refused(

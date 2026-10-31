@@ -191,7 +191,7 @@ A setting the driver refuses, such as a baud, stops the port until you change th
 ## Actions
 
 Every action except List Ports and Auto-configure takes `port`, titled **Port name**: the port's **Name**, or its default name, not its path.
-Leave it out to act on the first configured port.
+Leave it out when only one port is configured; with several, the action fails and names them.
 
 | Action | Path | What it does | Read-only |
 |---|---|---|---|
@@ -228,7 +228,7 @@ idf.py -p /dev/ttyUSB0 flash
 zelos actions execute Serial/acquire --params '{"port": "dut"}'
 ```
 
-`dut` is the port's Name; with `--params '{}'` the actions act on the first configured port.
+`dut` is the port's Name; with only one port configured, `--params '{}'` acts on it.
 Acquire Port waits up to 14 s for the port to open, so a board that appears again after its flash is acquired.
 It fails at once on a permission error or an unsupported setting.
 After 14 s it fails with the port's health sentence, and the extension keeps trying to open the port.
