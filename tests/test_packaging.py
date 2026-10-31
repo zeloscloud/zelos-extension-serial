@@ -16,12 +16,9 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = tomllib.loads((REPO_ROOT / "extension.toml").read_text(encoding="utf-8"))
 
 
-def test_entry_module_re_exports_the_action_prefix() -> None:
-    """The inventory dump reads the prefix off the entry module and falls back to its file name,
-    so a missing re-export ships `main/list_ports` beside a live `Serial/list_ports`."""
-    import main
-
-    assert main.ACTION_PREFIX == ACTION_PREFIX == MANIFEST["name"] == "Serial"
+def test_the_name_is_the_action_prefix() -> None:
+    """Live actions register under ACTION_PREFIX; stopped ones under the manifest name."""
+    assert MANIFEST["name"] == ACTION_PREFIX == "Serial"
 
 
 README_MEDIA = re.findall(

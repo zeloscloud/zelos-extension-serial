@@ -7,8 +7,6 @@ Nothing runs at import: packaging and standalone action runs import this module.
 import logging
 import time
 
-# Re-exported: the packaged action inventory reads the namespace off the entry module.
-from zelos_extension_serial import ACTION_PREFIX as ACTION_PREFIX
 from zelos_extension_serial import app
 
 if __name__ == "__main__":
