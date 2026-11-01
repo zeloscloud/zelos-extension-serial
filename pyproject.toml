@@ -17,7 +17,7 @@ classifiers = [
 dependencies = [
     "zelos-sdk>=0.0.13a1,<0.1",
     # rfc2217.py overrides private methods, which is only safe on a pinned minor.
-    "serialx>=1.11,<1.12",
+    "serialx>=1.11,<1.16",
     "jsonschema>=4",
     "zelos-log-lines>=0.1,<0.2",
 ]
