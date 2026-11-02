@@ -7,7 +7,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["zelos", "extension", "serial", "uart"]
 dependencies = [
-    "zelos-sdk>=0.0.13a1",
+    "zelos-sdk>=0.0.13",
     # rfc2217.py overrides private methods, which is only safe on a pinned minor.
     "serialx>=1.11,<1.12",
     "jsonschema>=4",
